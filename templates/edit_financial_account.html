@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Account - {{ account.name }} | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Finance</span> / <a href="{{ url_for('finance_accounts') }}">Accounts</a> / <strong>Edit {{ account.name }}</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <div style="margin-bottom: 4px;">
+            <a href="{{ url_for('finance_accounts') }}" class="btn btn-secondary btn-sm">← Back to Accounts</a>
+        </div>
+        <h1>Edit Financial Account</h1>
+        <p>Manage account display name while protecting historical ledger transactions and opening balances.</p>
+    </div>
+    <div>
+        {% if account.status %}
+            <span class="badge badge-success" style="font-size: 14px; padding: 6px 16px;">Active Account</span>
+        {% else %}
+            <span class="badge badge-danger" style="font-size: 14px; padding: 6px 16px;">Inactive Account</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="stats-grid" style="margin-bottom: 28px;">
+    <div class="stat-card">
+        <div class="stat-card-label">Account Type</div>
+        <div class="stat-card-value">{{ account.account_type }}</div>
+        <div class="stat-card-hint">Fixed classification</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-label">Opening Balance</div>
+        <div class="stat-card-value">₹{{ "%.2f"|format(account.opening_balance or 0) }}</div>
+        <div class="stat-card-hint">Initial seed capital</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-label">Current Ledger Balance</div>
+        <div class="stat-card-value" style="color: #34d399;">₹{{ "%.2f"|format(current_balance) }}</div>
+        <div class="stat-card-hint">Opening + Credits − Debits</div>
+    </div>
+</div>
+
+<div class="glass-card" style="max-width: 620px; margin: 0 auto;">
+    <div class="glass-card-header">
+        <h3>Account Details</h3>
+        <span class="badge badge-neutral">ID #{{ account.id }}</span>
+    </div>
+    <div class="glass-card-body">
+        <form method="POST" action="{{ url_for('edit_financial_account', account_id=account.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label">Account Name *</label>
+                <input type="text" name="name" class="form-control" value="{{ account.name }}" required>
+                <span style="font-size: 11px; color: var(--text-muted);">Enter a unique name identifying this bank or cash account</span>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="form-label">Account Type (Locked)</label>
+                <input type="text" class="form-control" value="{{ account.account_type }}" disabled style="opacity: 0.6; cursor: not-allowed;">
+                <span style="font-size: 11px; color: var(--text-muted);">Account types cannot be modified after creation to ensure ledger integrity.</span>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-subtle); padding-top: 20px;">
+                <a href="{{ url_for('finance_accounts') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

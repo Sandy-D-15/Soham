@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In | {{ society.name if society and society.name else "Housing Society" }}</title>
+    <!-- Flash-free Theme Initializer -->
+    <script>
+        (function() {
+            var stored = localStorage.getItem('theme');
+            var theme = stored ? stored : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #070b16;
+            --surface: rgba(17, 24, 39, 0.78);
+            --surface-solid: #111827;
+            --border: rgba(255, 255, 255, 0.12);
+            --text: #f9fafb;
+            --muted: #9ca3af;
+            --accent: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --select-bg: #111827;
+            --shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+
+            --bg-dark: #070b16;
+            --surface-glass: rgba(17, 24, 39, 0.78);
+            --border-glass: rgba(255, 255, 255, 0.12);
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --text-dim: #6b7280;
+            --accent-glow: rgba(79, 70, 229, 0.25);
+            --input-bg: rgba(15, 23, 42, 0.65);
+            --input-border: rgba(255, 255, 255, 0.14);
+            --info: #3b82f4;
+        }
+
+        :root[data-theme="light"] {
+            color-scheme: light;
+            --bg: #f5f7fb;
+            --surface: #ffffff;
+            --surface-solid: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --muted: #64748b;
+            --accent: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --select-bg: #ffffff;
+            --shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+
+            --bg-dark: #f5f7fb;
+            --surface-glass: rgba(255, 255, 255, 0.95);
+            --border-glass: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --text-dim: #94a3b8;
+            --input-bg: #ffffff;
+            --input-border: #cbd5e1;
+            --accent-glow: rgba(79, 70, 229, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background:
+                radial-gradient(circle at 15% 15%, rgba(79, 70, 229, 0.28), transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(37, 99, 235, 0.25), transparent 45%),
+                radial-gradient(circle at 50% 50%, rgba(192, 38, 211, 0.12), transparent 50%),
+                linear-gradient(135deg, #040711, #0b1120, #0f172a);
+            color: var(--text-main);
+            padding: 16px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .ambient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            pointer-events: none;
+            opacity: 0.5;
+            animation: floatOrb 12s ease-in-out infinite alternate;
+        }
+        .orb-1 { width: 340px; height: 340px; background: #6366f1; top: -100px; left: -100px; }
+        .orb-2 { width: 300px; height: 300px; background: #2563eb; bottom: -80px; right: -80px; animation-delay: 3s; }
+
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, -25px) scale(1.08); }
+        }
+
+        .theme-toggle-floating {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            color: var(--text-main);
+            font-size: 18px;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        }
+        .theme-toggle-floating:hover {
+            transform: scale(1.08);
+            border-color: var(--primary);
+        }
+
+        :root[data-theme="light"] body {
+            background:
+                radial-gradient(circle at 15% 15%, rgba(79, 70, 229, 0.08), transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(37, 99, 235, 0.06), transparent 45%),
+                linear-gradient(135deg, #eef2f6, #f5f7fb, #ffffff);
+            color: var(--text-main);
+        }
+        :root[data-theme="light"] .society-title {
+            color: var(--text-main) !important;
+        }
+        :root[data-theme="light"] .role-tab {
+            color: var(--text-muted);
+            border-color: var(--border-glass);
+            background: rgba(0, 0, 0, 0.03);
+        }
+        :root[data-theme="light"] .role-tab:hover {
+            color: var(--text-main);
+            background: rgba(0, 0, 0, 0.06);
+        }
+        :root[data-theme="light"] .role-tab.active {
+            color: #ffffff;
+            background: var(--primary);
+        }
+        :root[data-theme="light"] .form-input {
+            background: #ffffff;
+            color: var(--text-main);
+            border-color: #cbd5e1;
+        }
+        :root[data-theme="light"] .form-input:focus {
+            background: #ffffff;
+            border-color: var(--primary);
+        }
+        :root[data-theme="light"] .remember-label {
+            color: var(--text-muted);
+        }
+        :root[data-theme="light"] .footer-text {
+            color: var(--text-muted);
+        }
+        :root[data-theme="light"] .ambient-orb {
+            opacity: 0.2;
+        }
+
+        .login-card {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 440px;
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border-radius: 22px;
+            padding: 36px 32px;
+            box-shadow:
+                0 25px 60px -15px rgba(0, 0, 0, 0.7),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            animation: cardAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes cardAppear {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .brand-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .brand-logo-container {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 12px;
+            background: rgba(79, 70, 229, 0.15);
+            border: 1px solid rgba(79, 70, 229, 0.35);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 24px var(--accent-glow);
+        }
+
+        .brand-logo-img {
+            max-width: 44px;
+            max-height: 44px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .brand-logo-icon {
+            font-size: 28px;
+        }
+
+        .society-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: #ffffff;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .society-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Segmented Control Tabs */
+        .segmented-control {
+            display: flex;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 9px 12px;
+            font-size: 13.5px;
+            font-weight: 600;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 2px 10px rgba(79, 70, 229, 0.4);
+        }
+
+        /* Dismissible Flash Alerts */
+        .flash-alerts {
+            margin-bottom: 20px;
+        }
+
+        .alert-box {
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.16);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            color: #fca5a5;
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.16);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            color: #fde68a;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.16);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            color: #a7f3d0;
+        }
+
+        .alert-info {
+            background: rgba(59, 130, 246, 0.16);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            color: #bfdbfe;
+        }
+
+        .alert-close {
+            background: transparent;
+            border: none;
+            color: inherit;
+            opacity: 0.7;
+            font-size: 16px;
+            line-height: 1;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .alert-close:hover { opacity: 1; }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            letter-spacing: 0.2px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 14px;
+            color: #ffffff;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: #818cf8;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+            background: rgba(15, 23, 42, 0.85);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 13px;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.15s;
+        }
+        .toggle-password:hover { color: var(--text-main); }
+
+        .form-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 16px 0 22px;
+            font-size: 13px;
+        }
+
+        .remember-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: var(--text-muted);
+            user-select: none;
+        }
+
+        .remember-checkbox-label input[type="checkbox"] {
+            accent-color: var(--primary);
+            width: 15px;
+            height: 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .forgot-link {
+            color: #a5b4fc;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+        .forgot-link:hover {
+            color: #c7d2fe;
+            text-decoration: underline;
+        }
+
+        /* Submit Button with Spinner */
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            border: none;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 14.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            background: linear-gradient(135deg, #4338ca, #3730a3);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.75;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .card-footer {
+            margin-top: 24px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .card-footer a {
+            color: #a5b4fc;
+            text-decoration: none;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+        .card-footer a:hover {
+            text-decoration: underline;
+            color: #c7d2fe;
+        }
+
+        @media (max-width: 440px) {
+            .login-card {
+                padding: 28px 20px;
+                border-radius: 18px;
+            }
+            .society-title { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <button type="button" class="theme-toggle-floating" id="themeToggleBtn" aria-label="Toggle theme mode" aria-pressed="false" title="Switch Theme">
+        <span class="theme-icon-dark">🌙</span>
+        <span class="theme-icon-light" style="display: none;">☀️</span>
+    </button>
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+
+    <div class="login-card">
+        <div class="brand-header">
+            <div class="brand-logo-container">
+                {% if society and society.logo_filename %}
+                    <img src="{{ url_for('static', filename='uploads/' + society.logo_filename) }}" alt="Logo" class="brand-logo-img">
+                {% else %}
+                    <span class="brand-logo-icon">🏢</span>
+                {% endif %}
+            </div>
+            <h1 class="society-title">{{ society.name if society and society.name else "Housing Society Portal" }}</h1>
+            <p class="society-subtitle">Resident &amp; Management Portal</p>
+        </div>
+
+        <!-- Segmented Tab Control -->
+        <div class="segmented-control" role="tablist">
+            <button type="button" class="tab-btn active" id="tabMember" onclick="switchLoginTab('member')">Resident Login</button>
+            <button type="button" class="tab-btn" id="tabAdmin" onclick="switchLoginTab('admin')">Admin Login</button>
+        </div>
+
+        <!-- Flash Messages -->
+        <div class="flash-alerts">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% set cat_class = 'alert-danger' if category in ['error', 'danger'] else ('alert-success' if category == 'success' else ('alert-warning' if category == 'warning' else 'alert-info')) %}
+                        <div class="alert-box {{ cat_class }}">
+                            <span>{{ message }}</span>
+                            <button type="button" class="alert-close" onclick="this.parentElement.remove()">×</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Login Form -->
+        <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}" id="loginForm" onsubmit="handleSubmit(event)">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="login_type" id="loginTypeInput" value="member">
+
+            <div class="form-group">
+                <label for="identifierInput" class="form-label" id="identifierLabel">Email or Mobile Number</label>
+                <div class="input-wrapper">
+                    <input
+                        type="text"
+                        name="identifier"
+                        id="identifierInput"
+                        class="form-input"
+                        placeholder="Enter email or 10-digit mobile"
+                        value="{{ identifier if identifier else '' }}"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="passwordInput" class="form-label">Password</label>
+                <div class="input-wrapper">
+                    <input
+                        type="password"
+                        name="password"
+                        id="passwordInput"
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                        autocomplete="current-password"
+                    >
+                    <button type="button" class="toggle-password" onclick="togglePasswordVisibility()" aria-label="Toggle password visibility">
+                        <span id="pwdToggleIcon">👁️</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-options">
+                <label class="remember-checkbox-label">
+                    <input type="checkbox" name="remember" value="true">
+                    <span>Remember me (30 days)</span>
+                </label>
+                <a href="{{ url_for('auth.forgot_password') }}" class="forgot-link">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <span class="spinner" id="btnSpinner"></span>
+                <span id="btnText">Sign In</span>
+            </button>
+        </form>
+
+        <div class="card-footer" id="footerRegister">
+            <span>New resident?</span>
+            <a href="{{ url_for('auth.register') }}">Register here</a>
+        </div>
+    </div>
+
+    <script>
+        function switchLoginTab(type) {
+            const memberBtn = document.getElementById("tabMember");
+            const adminBtn = document.getElementById("tabAdmin");
+            const typeInput = document.getElementById("loginTypeInput");
+            const idLabel = document.getElementById("identifierLabel");
+            const idInput = document.getElementById("identifierInput");
+            const footer = document.getElementById("footerRegister");
+
+            if (type === "admin") {
+                adminBtn.classList.add("active");
+                memberBtn.classList.remove("active");
+                typeInput.value = "admin";
+                idLabel.textContent = "Admin Email Address";
+                idInput.placeholder = "admin@society.org";
+                idInput.type = "email";
+                footer.style.display = "none";
+                localStorage.setItem("loginTab", "admin");
+            } else {
+                memberBtn.classList.add("active");
+                adminBtn.classList.remove("active");
+                typeInput.value = "member";
+                idLabel.textContent = "Email or Mobile Number";
+                idInput.placeholder = "Enter email or 10-digit mobile";
+                idInput.type = "text";
+                footer.style.display = "block";
+                localStorage.setItem("loginTab", "member");
+            }
+        }
+
+        // Restore tab preference
+        (function initTab() {
+            const serverType = "{{ login_type if login_type else '' }}";
+            const savedTab = serverType || localStorage.getItem("loginTab") || "member";
+            switchLoginTab(savedTab);
+        })();
+
+        function togglePasswordVisibility() {
+            const pwd = document.getElementById("passwordInput");
+            const icon = document.getElementById("pwdToggleIcon");
+            if (pwd.type === "password") {
+                pwd.type = "text";
+                icon.textContent = "🙈";
+            } else {
+                pwd.type = "password";
+                icon.textContent = "👁️";
+            }
+        }
+
+        function handleSubmit(e) {
+            const btn = document.getElementById("submitBtn");
+            const spinner = document.getElementById("btnSpinner");
+            const text = document.getElementById("btnText");
+
+            // Avoid double submit
+            btn.disabled = true;
+            spinner.style.display = "inline-block";
+            text.textContent = "Signing In...";
+            return true;
+        }
+
+        // Theme Toggle
+        (function initTheme() {
+            const btn = document.getElementById("themeToggleBtn");
+            if (!btn) return;
+            const darkIcon = btn.querySelector('.theme-icon-dark');
+            const lightIcon = btn.querySelector('.theme-icon-light');
+
+            function syncUI(theme) {
+                const isDark = theme === 'dark';
+                btn.setAttribute('aria-pressed', isDark ? 'false' : 'true');
+                if (darkIcon && lightIcon) {
+                    darkIcon.style.display = isDark ? 'inline' : 'none';
+                    lightIcon.style.display = isDark ? 'none' : 'inline';
+                }
+            }
+
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            syncUI(current);
+
+            btn.addEventListener('click', function() {
+                const now = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+                const next = now === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                syncUI(next);
+            });
+        })();
+    </script>
+</body>
+</html>

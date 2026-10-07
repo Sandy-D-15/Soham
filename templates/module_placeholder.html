@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Society Management</span> / <strong>{{ title }}</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>{{ title }}</h1>
+        <p>{{ description }}</p>
+    </div>
+    {% if action_url and action_label %}
+        <a href="{{ action_url }}" class="btn btn-primary">
+            <span>＋</span> {{ action_label }}
+        </a>
+    {% endif %}
+</div>
+
+<div class="glass-card">
+    <div class="glass-card-body">
+        <div class="empty-state">
+            <div class="empty-state-icon">◈</div>
+            <h3>{{ title }} Module</h3>
+            <p>{{ info_message or "This module is configured and ready for implementation. Database models, transaction hooks, and workflow capabilities will be activated in the next development phase." }}</p>
+            <div style="margin-top: 16px; display: flex; gap: 12px;">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
+                {% if fallback_url and fallback_label %}
+                    <a href="{{ fallback_url }}" class="btn btn-primary btn-sm">{{ fallback_label }}</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

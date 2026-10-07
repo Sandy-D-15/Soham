@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Add Society Member | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Society Management</span> / <a href="{{ url_for('members') }}">Members</a> / <strong>Add Member</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <div style="margin-bottom: 4px;">
+            <a href="{{ url_for('members') }}" class="btn btn-secondary btn-sm">← Back to Members</a>
+        </div>
+        <h1>Add Society Member</h1>
+        <p>Create private, password-protected portal access for an approved resident.</p>
+    </div>
+</div>
+
+<div class="glass-card" style="max-width: 600px; margin: 0 auto;">
+    <div class="glass-card-header">
+        <h3>Member Profile & Login</h3>
+        <span class="badge badge-info">Private Access</span>
+    </div>
+    <div class="glass-card-body">
+        <form method="POST" action="{{ url_for('add_member') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label">Member Full Name *</label>
+                <input type="text" name="full_name" class="form-control" placeholder="e.g. Ramesh Sharma" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label">Email Address *</label>
+                <input type="email" name="email" class="form-control" placeholder="e.g. ramesh@example.com" required>
+                <span style="font-size: 11px; color: var(--text-muted);">Will be used by the member to login</span>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label">Mobile Number *</label>
+                <input type="tel" name="mobile" class="form-control" placeholder="e.g. 9876543210" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label class="form-label">Initial Password *</label>
+                <input type="password" name="password" class="form-control" placeholder="Min 8 characters" required>
+                <span style="font-size: 11px; color: var(--text-muted);">Member can use this password to sign in</span>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-subtle); padding-top: 20px;">
+                <a href="{{ url_for('members') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <span>＋</span> Create Member
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

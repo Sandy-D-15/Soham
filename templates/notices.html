@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Notice Board & Circulars | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Communication</span> / <strong>Notices</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Society Notice Board</h1>
+        <p>Official society notices, circulars, meeting agendas, and emergency announcements.</p>
+    </div>
+</div>
+
+{% if current_user.role == 'secretary' %}
+<!-- Secretary Publish Notice Form -->
+<div class="glass-card" style="margin-bottom: 28px;">
+    <div class="glass-card-header">
+        <h3>Publish New Community Notice</h3>
+        <span class="badge badge-info">Broadcast</span>
+    </div>
+    <div class="glass-card-body">
+        <form method="POST" action="{{ url_for('add_notice') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                    <label class="form-label">Notice Title *</label>
+                    <input type="text" name="title" class="form-control" placeholder="e.g. Annual General Body Meeting (AGM) Notice" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category *</label>
+                    <select name="category" class="form-control" required>
+                        <option value="General">General</option>
+                        <option value="Meeting">Meeting / AGM</option>
+                        <option value="Maintenance">Maintenance Alert</option>
+                        <option value="Emergency">Emergency</option>
+                        <option value="Rules">Rules & Regulations</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Priority *</label>
+                    <select name="priority" class="form-control" required>
+                        <option value="Normal">Normal</option>
+                        <option value="Important">Important</option>
+                        <option value="Urgent">Urgent / Emergency</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Expiry Date</label>
+                    <input type="date" name="expires_at" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label">Notice Details / Announcement Text *</label>
+                <textarea name="content" class="form-control" rows="4" placeholder="Enter complete notice information for residents..." required></textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Attachment (PDF / Image)</label>
+                    <input type="file" name="attachment_file" class="form-control" accept=".pdf,.png,.jpg,.jpeg">
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 20px;">
+                    <input type="checkbox" id="is_pinned" name="is_pinned" value="1" style="width: 18px; height: 18px;">
+                    <label for="is_pinned" style="color: white; font-size: 13px; margin-bottom: 0; cursor: pointer;">Pin to Top of Notice Board</label>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary">
+                        📢 Broadcast Notice
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Notices Board List -->
+<div style="display: flex; flex-direction: column; gap: 18px;">
+    {% if notices %}
+        {% for notice in notices %}
+            <div class="glass-card" style="border-left: 4px solid {% if notice.priority == 'Urgent' %}#ef4444{% elif notice.priority == 'Important' %}#6366f1{% else %}var(--border-subtle){% endif %};">
+                <div class="glass-card-header" style="padding-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        {% if notice.is_pinned %}
+                            <span class="badge badge-warning" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">📌 Pinned</span>
+                        {% endif %}
+                        <span class="badge {% if notice.priority == 'Urgent' %}badge-danger{% elif notice.priority == 'Important' %}badge-indigo{% else %}badge-neutral{% endif %}">
+                            {{ notice.priority }}
+                        </span>
+                        <span class="badge badge-info">{{ notice.category }}</span>
+                        <h3 style="margin: 0; font-size: 17px; color: white;">{{ notice.title }}</h3>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted);">
+                        Posted on {{ notice.created_at.strftime('%d %b %Y, %I:%M %p') }}
+                        {% if notice.author %} by {{ notice.author.name }}{% endif %}
+                    </div>
+                </div>
+                <div class="glass-card-body" style="padding-top: 8px;">
+                    <div style="color: #e2e8f0; font-size: 14px; line-height: 1.6; white-space: pre-wrap; margin-bottom: 12px;">{{ notice.content }}</div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 12px; font-size: 12px;">
+                        <div>
+                            {% if notice.attachment_path %}
+                                <a href="{{ url_for('static', filename=notice.attachment_path) }}" target="_blank" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+                                    📎 View Attached Document
+                                </a>
+                            {% endif %}
+                            {% if notice.expires_at %}
+                                <span style="color: var(--text-muted); margin-left: 10px;">Expires: {{ notice.expires_at.strftime('%d %b %Y') }}</span>
+                            {% endif %}
+                        </div>
+
+                        {% if current_user.role == 'secretary' %}
+                            <div style="display: flex; gap: 8px;">
+                                <form method="POST" action="{{ url_for('toggle_notice_pin', notice_id=notice.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-secondary btn-sm">
+                                        {% if notice.is_pinned %}Unpin{% else %}Pin{% endif %}
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('delete_notice', notice_id=notice.id) }}" onsubmit="return confirm('Archive/remove this notice?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="glass-card">
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <h3>No Notices Posted</h3>
+                <p>There are no active notices or announcements currently published on the board.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Society Expenses | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Finance</span> / <strong>Society Expenses</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Society Expense Management</h1>
+        <p>Record, approve, and disburse society operational expenditures with atomic general ledger tracking.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('expense_categories') }}" class="btn btn-secondary">
+            🏷️ Expense Categories
+        </a>
+        <a href="{{ url_for('vendors') }}" class="btn btn-secondary">
+            🏢 Vendors Directory
+        </a>
+    </div>
+</div>
+
+<!-- Expense Summary Stats -->
+<div class="stats-grid" style="margin-bottom: 28px;">
+    <div class="stat-card">
+        <div class="stat-card-label">Total Expenses</div>
+        <div class="stat-card-value">₹{{ "%.2f"|format(total_expense_amount) }}</div>
+        <div class="stat-card-desc">All submitted expense vouchers</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Paid / Disbursed</div>
+        <div class="stat-card-value" style="color: #34d399;">
+            ₹{{ "%.2f"|format(paid_expense_amount) }}
+        </div>
+        <div class="stat-card-desc">Debited to bank / cash ledger</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Approved (Unpaid)</div>
+        <div class="stat-card-value" style="color: #fbbf24;">
+            ₹{{ "%.2f"|format(approved_unpaid_amount) }}
+        </div>
+        <div class="stat-card-desc">Ready for fund disbursement</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Pending Approval</div>
+        <div class="stat-card-value" style="color: #60a5fa;">
+            {{ pending_count }}
+        </div>
+        <div class="stat-card-desc">Awaiting committee review</div>
+    </div>
+</div>
+
+<!-- Add Expense Card -->
+<div class="glass-card" style="margin-bottom: 28px;">
+    <div class="glass-card-header">
+        <h3>Create New Society Expense</h3>
+        <span class="badge badge-warning">Starts as Pending Approval</span>
+    </div>
+    <div class="glass-card-body">
+        <form method="POST" action="{{ url_for('add_expense') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Expense Category *</label>
+                    <select name="category_id" class="form-control" required>
+                        <option value="">Select Category</option>
+                        {% for c in categories %}
+                            <option value="{{ c.id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Vendor / Payee Name *</label>
+                    <input type="text" name="vendor_name" list="vendor_list" class="form-control" placeholder="Select or type vendor name" required>
+                    <datalist id="vendor_list">
+                        {% for v in registered_vendors %}
+                            <option value="{{ v.name }}">{{ v.service_type }}</option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Amount (₹) *</label>
+                    <input type="number" step="0.01" min="0.01" name="amount" class="form-control" placeholder="0.00" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Expense / Bill Date *</label>
+                    <input type="date" name="expense_date" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Invoice / Bill Reference</label>
+                    <input type="text" name="invoice_reference" class="form-control" placeholder="e.g. INV-2026-987">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Invoice / Receipt File (PDF/Image)</label>
+                    <input type="file" name="receipt_file" class="form-control" accept=".pdf,.png,.jpg,.jpeg">
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">Notes / Description</label>
+                    <input type="text" name="notes" class="form-control" placeholder="Scope of work, reason or repair justification">
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">
+                    <span>＋</span> Submit Expense for Approval
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Expenses List Table -->
+<div class="glass-card">
+    <div class="glass-card-header">
+        <div>
+            <h3>All Society Expenses</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Inspect approvals, reject invalid claims, and disburse approved vouchers</span>
+        </div>
+        <span class="badge badge-neutral">{{ expenses|length }} Records</span>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if expenses %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Date</th>
+                            <th>Vendor & Category</th>
+                            <th>Amount</th>
+                            <th>Invoice / Receipt</th>
+                            <th>Approval</th>
+                            <th>Payment</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exp in expenses %}
+                            <tr>
+                                <td><span class="badge badge-neutral">#{{ exp.id }}</span></td>
+                                <td>{{ exp.expense_date.strftime('%d %b %Y') if exp.expense_date else '--' }}</td>
+                                <td>
+                                    <strong style="color: white; font-size: 14px;">{{ exp.vendor_name }}</strong>
+                                    <div style="font-size: 12px; color: var(--text-muted);">{{ exp.category.name }}</div>
+                                </td>
+                                <td><strong style="font-size: 15px; color: white;">₹{{ "%.2f"|format(exp.amount) }}</strong></td>
+                                <td>
+                                    <div>{{ exp.invoice_reference or '—' }}</div>
+                                    {% if exp.attachment_path %}
+                                        <div style="margin-top: 4px;">
+                                            <a href="{{ url_for('static', filename=exp.attachment_path) }}" target="_blank" class="badge badge-info" style="text-decoration: none; font-size: 10px;">
+                                                📎 View Bill
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if exp.approval_status == 'Approved' %}
+                                        <span class="badge badge-success">Approved</span>
+                                    {% elif exp.approval_status == 'Rejected' %}
+                                        <span class="badge badge-danger" title="{{ exp.rejection_reason }}">Rejected</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if exp.payment_status == 'Paid' %}
+                                        <span class="badge badge-paid">Paid</span>
+                                        <div style="font-size: 11px; color: var(--text-muted);">{{ exp.financial_account.name if exp.financial_account else '' }}</div>
+                                    {% else %}
+                                        <span class="badge badge-unpaid">Unpaid</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if exp.approval_status == 'Pending Approval' %}
+                                        <div style="display: flex; gap: 6px;">
+                                            <form method="POST" action="{{ url_for('approve_expense', expense_id=exp.id) }}" style="display: inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                            </form>
+                                            <button type="button" class="btn btn-danger btn-sm" onclick="openRejectModal('{{ exp.id }}', '{{ exp.vendor_name }}', '{{ exp.amount }}')">
+                                                Reject
+                                            </button>
+                                        </div>
+                                    {% elif exp.approval_status == 'Approved' and exp.payment_status != 'Paid' %}
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="openPayModal('{{ exp.id }}', '{{ exp.vendor_name }}', '{{ exp.amount }}')">
+                                            Disburse Payment →
+                                        </button>
+                                    {% elif exp.payment_status == 'Paid' %}
+                                        <span style="font-size: 12px; color: #34d399;">✓ Completed</span>
+                                    {% elif exp.approval_status == 'Rejected' %}
+                                        <span style="font-size: 11px; color: #f87171;">Reason: {{ exp.rejection_reason }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">↘</div>
+                <h3>No expenses recorded yet</h3>
+                <p>Record your first society expense. Expenses require committee approval before being paid from bank or cash accounts.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: Reject Expense -->
+<div id="rejectModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); z-index: 100; align-items: center; justify-content: center;">
+    <div class="glass-card" style="width: 480px; max-width: 90vw;">
+        <div class="glass-card-header">
+            <h3>Reject Expense Request</h3>
+            <button class="flash-close-btn" onclick="closeRejectModal()">&times;</button>
+        </div>
+        <div class="glass-card-body">
+            <p id="rejectModalDesc" style="color: var(--text-secondary); margin-bottom: 16px; font-size: 13.5px;"></p>
+            <form id="rejectModalForm" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">Rejection Reason *</label>
+                    <textarea name="rejection_reason" class="form-control" rows="3" placeholder="Provide reason for rejecting this claim (required)..." required></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Confirm Rejection</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Pay Approved Expense -->
+<div id="payModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); z-index: 100; align-items: center; justify-content: center;">
+    <div class="glass-card" style="width: 500px; max-width: 90vw;">
+        <div class="glass-card-header" style="background: rgba(16, 185, 129, 0.08);">
+            <h3>Disburse Expense Payment</h3>
+            <button class="flash-close-btn" onclick="closePayModal()">&times;</button>
+        </div>
+        <div class="glass-card-body">
+            <p id="payModalDesc" style="color: var(--text-secondary); margin-bottom: 16px; font-size: 13.5px;"></p>
+            <form id="payModalForm" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label">Payment Mode *</label>
+                    <select name="payment_mode" class="form-control" required>
+                        <option value="Bank Transfer" selected>Bank Transfer (NEFT/RTGS/IMPS)</option>
+                        <option value="UPI">UPI</option>
+                        <option value="Cheque">Cheque</option>
+                        <option value="Cash">Cash</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label">Disburse from Account *</label>
+                    <select name="account_id" class="form-control" required>
+                        <option value="">Select Account</option>
+                        {% for acc in accounts %}
+                            <option value="{{ acc.id }}">{{ acc.name }} ({{ acc.account_type }})</option>
+                        {% endfor %}
+                    </select>
+                    <span style="font-size: 11px; color: var(--text-muted);">Cash expenses must use Cash or Petty Cash account; UPI/Bank must use Bank account.</span>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">Payment Reference (UTR / Cheque No)</label>
+                    <input type="text" name="payment_reference" class="form-control" placeholder="e.g. UTR-987654321">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closePayModal()">Cancel</button>
+                    <button type="submit" class="btn btn-success">Confirm & Post DEBIT</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openRejectModal(id, vendor, amount) {
+    document.getElementById('rejectModal').style.display = 'flex';
+    document.getElementById('rejectModalForm').action = '/expenses/' + id + '/reject';
+    document.getElementById('rejectModalDesc').innerText = 'Rejecting expense #' + id + ' for ' + vendor + ' of ₹' + amount + '.';
+}
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+}
+
+function openPayModal(id, vendor, amount) {
+    document.getElementById('payModal').style.display = 'flex';
+    document.getElementById('payModalForm').action = '/expenses/' + id + '/pay';
+    document.getElementById('payModalDesc').innerText = 'Disbursing ₹' + amount + ' to ' + vendor + ' (Expense #' + id + '). This will post a DEBIT entry to the general ledger.';
+}
+function closePayModal() {
+    document.getElementById('payModal').style.display = 'none';
+}
+</script>
+{% endblock %}

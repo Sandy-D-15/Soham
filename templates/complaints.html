@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}My Maintenance Requests | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Support</span> / <strong>My Maintenance Requests</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+    <div class="header-title-group">
+        <h1>Maintenance & Helpdesk Requests</h1>
+        <p>Lodge maintenance tickets for your flat, upload photos or documents, and monitor resolution progress in real time.</p>
+    </div>
+</div>
+
+<!-- Lodge New Complaint Card -->
+<div class="glass-card" style="margin-bottom: 28px;">
+    <div class="glass-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0;">🛠️ Lodge a Maintenance Ticket</h3>
+        <span class="badge badge-info">Service Request</span>
+    </div>
+    <div class="glass-card-body">
+        {% if not assignments and current_user.role == 'member' %}
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 16px; color: #fbbf24;">
+                <strong>Flat Assignment Pending:</strong> You do not currently have an active room/flat assigned to your account. Please contact the society secretary to link your flat before filing complaints.
+            </div>
+        {% else %}
+            <form method="POST" action="{{ url_for('complaints.add_complaint') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <!-- Room / Flat Selector -->
+                    <div class="form-group">
+                        <label class="form-label">Room / Flat Number *</label>
+                        <select name="flat_id" class="form-control" required style="font-weight: 600;">
+                            {% for a in assignments %}
+                                <option value="{{ a.flat_id }}" {% if loop.first %}selected{% endif %}>
+                                    {% if a.flat and a.flat.floor and a.flat.floor.wing %}
+                                        Flat {{ a.flat.floor.wing.name }}-{{ a.flat.flat_number }} ({{ a.relation_type }})
+                                    {% elif a.flat %}
+                                        Flat {{ a.flat.flat_number }} ({{ a.relation_type }})
+                                    {% else %}
+                                        Flat #{{ a.flat_id }}
+                                    {% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="form-group">
+                        <label class="form-label">Issue Category *</label>
+                        <select name="category" class="form-control" required>
+                            <option value="Plumbing">Plumbing / Water Supply</option>
+                            <option value="Electrical">Electrical & Lighting</option>
+                            <option value="Lift">Elevator / Lift</option>
+                            <option value="Cleanliness">Housekeeping & Hygiene</option>
+                            <option value="Security">Security & Access</option>
+                            <option value="Noise">Noise Disturbance</option>
+                            <option value="Parking">Parking Issue</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Priority -->
+                    <div class="form-group">
+                        <label class="form-label">Priority Level *</label>
+                        <select name="priority" class="form-control" required>
+                            <option value="Low">Low (General inquiry/minor)</option>
+                            <option value="Medium" selected>Medium (Standard repair)</option>
+                            <option value="High">High (Impacting daily living)</option>
+                            <option value="Emergency">Emergency (Immediate attention needed)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Title / Subject -->
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Issue Title / Subject * (5 - 100 characters)</label>
+                    <input type="text" name="title" class="form-control" placeholder="e.g. Master bathroom tap dripping constantly or Hallway light fuse blown" minlength="5" maxlength="100" required>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Detailed Description of the Issue * (10 - 1000 characters)</label>
+                    <textarea name="description" class="form-control" rows="3" placeholder="Provide full context, specific location, when it started, and any symptoms..." minlength="10" maxlength="1000" required></textarea>
+                </div>
+
+                <!-- Photo / Document Attachment Upload -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">Optional Photo or Document Attachment</label>
+                    <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.pdf" class="form-control" style="padding: 8px;">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                        Supported file formats: JPG, PNG, PDF. Maximum file size: 2MB.
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 600;">
+                        🛠️ Submit Maintenance Ticket
+                    </button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- My Complaints History -->
+<div class="glass-card">
+    <div class="glass-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0;">My Submitted Tickets ({{ complaints|length }})</h3>
+        <span class="badge badge-neutral">Track Status</span>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if complaints %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">#ID</th>
+                            <th style="width: 120px;">Room #</th>
+                            <th>Subject & Category</th>
+                            <th style="width: 100px;">Priority</th>
+                            <th style="width: 120px;">Status</th>
+                            <th>Assigned</th>
+                            <th style="width: 110px;">Date</th>
+                            <th style="text-align: right; width: 120px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in complaints %}
+                            <tr>
+                                <td>
+                                    <span class="badge badge-neutral" style="font-family: monospace;">#{{ c.id }}</span>
+                                </td>
+                                <td>
+                                    {% if c.flat %}
+                                        <span class="badge badge-indigo" style="font-weight: 700; font-size: 12px; padding: 4px 8px;">
+                                            {% if c.flat.floor and c.flat.floor.wing %}
+                                                {{ c.flat.floor.wing.name }}-{{ c.flat.flat_number }}
+                                            {% else %}
+                                                Flat {{ c.flat.flat_number }}
+                                            {% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge badge-neutral" style="font-size: 11px;">Common Area</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div style="font-weight: 600; color: #ffffff;">
+                                        {{ c.title }}
+                                        {% if c.attachment_path %}
+                                            <span title="Attachment included" style="font-size: 12px; margin-left: 4px;">📎</span>
+                                        {% endif %}
+                                    </div>
+                                    <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
+                                        <span class="badge badge-indigo" style="font-size: 10px; padding: 2px 6px;">{{ c.category }}</span>
+                                        <span style="font-size: 12px; color: var(--text-secondary); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            {{ c.description }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge {% if c.priority == 'Emergency' or c.priority == 'High' %}badge-danger{% elif c.priority == 'Medium' %}badge-warning{% else %}badge-neutral{% endif %}" style="font-size: 11px;">
+                                        {{ c.priority }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if c.status in ['Resolved', 'Closed'] %}
+                                        <span class="badge badge-success" style="font-size: 11px;">✓ {{ c.status }}</span>
+                                    {% elif c.status == 'In Progress' %}
+                                        <span class="badge badge-warning" style="font-size: 11px;">⚡ In Progress</span>
+                                    {% else %}
+                                        <span class="badge badge-danger" style="font-size: 11px;">● Open</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ c.assigned_name or 'Pending Assignment' }}
+                                </td>
+                                <td>
+                                    <div style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">
+                                        {{ c.created_at.strftime('%d %b %Y') }}
+                                    </div>
+                                </td>
+                                <td style="text-align: right;">
+                                    <a href="{{ url_for('complaints.detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm" style="font-size: 12px; padding: 4px 10px; white-space: nowrap;">
+                                        View Details →
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state" style="padding: 48px 24px;">
+                <div class="empty-state-icon" style="font-size: 40px; margin-bottom: 12px;">🛡️</div>
+                <h3 style="margin-bottom: 8px;">No Complaints Logged</h3>
+                <p style="color: var(--text-muted); max-width: 420px; margin: 0 auto;">
+                    You have not submitted any maintenance tickets. If you encounter any issue in your flat or society premises, use the form above to submit a request.
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

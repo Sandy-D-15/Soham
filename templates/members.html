@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Members Directory | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Residents</span> / <strong>Members Directory</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Society Members Directory</h1>
+        <p>Manage resident logins, flat allotments, approval status, and credentials.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('admin.requests', status='pending') }}" class="btn btn-secondary">
+            📋 Pending Requests ({{ pending_requests_count }})
+        </a>
+        <a href="{{ url_for('add_member') }}" class="btn btn-primary">
+            <span>＋</span> Add New Member
+        </a>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-label">
+            <span>Total Members</span>
+            <span class="badge badge-info">Registered</span>
+        </div>
+        <div class="stat-card-value">{{ total_members }}</div>
+        <div class="stat-card-hint">Total member profiles</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-label">
+            <span>Active Logins</span>
+            <span class="badge badge-success">Authorized</span>
+        </div>
+        <div class="stat-card-value" style="color: #34d399;">{{ active_members }}</div>
+        <div class="stat-card-hint">Can sign in to resident portal</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-label">
+            <span>Inactive / Suspended</span>
+            <span class="badge badge-warning">Restricted</span>
+        </div>
+        <div class="stat-card-value" style="color: #f59e0b;">{{ inactive_members }}</div>
+        <div class="stat-card-hint">Access temporarily revoked</div>
+    </div>
+</div>
+
+<!-- Members Table -->
+<div class="glass-card" style="padding: 0; overflow: hidden;">
+    <div class="glass-card-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 16px; margin: 0;">Resident Directory</h3>
+        <span style="font-size: 12px; color: var(--text-muted);">Self-registered and administrator-added resident records</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table" style="margin: 0; font-size: 13px;">
+            <thead>
+                <tr>
+                    <th>Member Name</th>
+                    <th>Contact Info</th>
+                    <th>Assigned Flat &amp; Role</th>
+                    <th>Approval Status</th>
+                    <th>Last Login</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if members %}
+                    {% for m in members %}
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div class="user-avatar" style="width: 32px; height: 32px; font-size: 12px; border-radius: 50%; background: rgba(79, 70, 229, 0.2); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #a5b4fc;">
+                                        {{ m.full_name[:1] | upper }}
+                                    </div>
+                                    <div>
+                                        <strong style="color: #ffffff; font-size: 13.5px;">{{ m.full_name }}</strong>
+                                        <div style="font-size: 11px; color: var(--text-muted);">
+                                            Member since {{ m.created_at.strftime('%d %b %Y') if m.created_at else '—' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div>{{ m.email }}</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">{{ m.mobile }}</div>
+                            </td>
+                            <td>
+                                {% set active_fms = m.flat_memberships | selectattr('is_active') | list if m.flat_memberships else [] %}
+                                {% if active_fms %}
+                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                        {% for fa in active_fms %}
+                                            <div>
+                                                <span class="badge badge-info" style="font-weight: 600;">
+                                                    {{ fa.flat.floor.wing.name if fa.flat.floor and fa.flat.floor.wing else '' }}-{{ fa.flat.flat_number }}
+                                                </span>
+                                                <span style="font-size: 11px; color: var(--text-muted);">
+                                                    ({{ fa.relation_type }}{% if fa.is_primary %} • Primary{% endif %})
+                                                </span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <span class="badge badge-neutral" style="color: var(--text-muted);">No Flat Assigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if m.approval_status == 'approved' %}badge-success{% elif m.approval_status == 'pending' %}badge-warning{% else %}badge-danger{% endif %}">
+                                    {{ m.approval_status | capitalize if m.approval_status else 'Approved' }}
+                                </span>
+                                {% if not m.is_active %}
+                                    <span class="badge badge-danger" style="margin-left: 4px;">Deactivated</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-size: 12px; color: var(--text-muted);">
+                                {% if m.last_login_at %}
+                                    {{ m.last_login_at.strftime('%d %b %Y, %H:%M') }}
+                                {% else %}
+                                    <span style="color: var(--text-dim);">Never</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+                                    <a href="{{ url_for('assign_member_flat', user_id=m.id) }}" class="btn btn-secondary btn-sm" title="Assign Flat">
+                                        Assign Flat
+                                    </a>
+                                    
+                                    <!-- Reset Password -->
+                                    <form method="POST" action="{{ url_for('admin.reset_member_password', user_id=m.id) }}" style="display: inline;" onsubmit="return confirm('Generate a temporary password for {{ m.full_name }}? It will be shown once.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-secondary btn-sm" title="Generate Temporary Password">
+                                            🔑 Reset Pass
+                                        </button>
+                                    </form>
+
+                                    <!-- Toggle Active/Inactive -->
+                                    <form method="POST" action="{{ url_for('toggle_member_status', user_id=m.id) }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn {% if m.is_active %}btn-danger{% else %}btn-success{% endif %} btn-sm">
+                                            {% if m.is_active %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                            <div style="font-size: 32px; margin-bottom: 8px;">👥</div>
+                            <p style="font-size: 14.5px; font-weight: 500;">No members registered yet</p>
+                            <a href="{{ url_for('add_member') }}" class="btn btn-primary btn-sm" style="margin-top: 12px;">Add First Member</a>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

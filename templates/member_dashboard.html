@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Resident Dashboard | {{ society.name if society else "Society Portal" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Resident Portal</span> / <strong>My Dashboard</strong>
+{% endblock %}
+
+{% block content %}
+{% if not has_assignment %}
+    <!-- Friendly Empty State: No Flat Assigned Yet -->
+    <div class="glass-card" style="margin-bottom: 28px; border-left: 4px solid #f59e0b;">
+        <div class="glass-card-body" style="padding: 40px 28px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">🏢</div>
+            <h2 style="font-size: 22px; font-weight: 700; color: white; margin-bottom: 10px;">
+                Welcome, {{ current_user.full_name }}
+            </h2>
+            <div style="max-width: 580px; margin: 0 auto; color: var(--text-secondary); font-size: 15px; line-height: 1.6;">
+                <p style="margin-bottom: 14px;">
+                    Your account is approved, but the society office has not yet linked a flat to your profile. Please contact your society secretary to complete your flat assignment.
+                </p>
+                <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 16px 20px; display: inline-block; text-align: left; margin-top: 8px;">
+                    <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;">Society Office Contact</div>
+                    <div style="color: white; font-weight: 600; font-size: 14px; margin-bottom: 4px;">
+                        📧 {{ society.official_email if society and society.official_email else 'office@society.example' }}
+                    </div>
+                    {% if society and society.registration_number %}
+                        <div style="font-size: 13px; color: var(--text-muted);">Reg: {{ society.registration_number }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: center;">
+                <a href="{{ url_for('notices') }}" class="btn btn-secondary">📢 View Society Notices</a>
+                <a href="{{ url_for('member.profile') }}" class="btn btn-secondary">👤 View My Profile</a>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <!-- Member Welcome Banner & Flat Switcher -->
+    <div class="glass-card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(30, 27, 75, 0.6) 0%, rgba(15, 23, 42, 0.75) 100%);">
+        <div class="glass-card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; padding: 24px 28px;">
+            <div>
+                <div class="badge badge-info" style="margin-bottom: 8px;">RESIDENT PORTAL</div>
+                <h1 style="font-family: var(--font-heading); font-size: 24px; font-weight: 700; color: white; margin-bottom: 6px;">
+                    Welcome, {{ current_user.full_name }} — Flat {{ active_flat.floor.wing.name if active_flat.floor and active_flat.floor.wing else '' }}-{{ active_flat.flat_number }}
+                </h1>
+                <p style="color: var(--text-secondary); font-size: 13.5px; margin: 0;">
+                    Relation: <strong style="color: white;">{{ active_assignment.relation_type }}</strong>
+                    {% if active_assignment.is_primary %}<span class="badge badge-success" style="font-size: 10px; margin-left: 6px;">Primary</span>{% endif %}
+                    • {{ active_flat.floor.wing.building.name if active_flat.floor and active_flat.floor.wing else '' }}
+                </p>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                {% if assignments|length > 1 %}
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="flatSelect" style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Switch Flat:</label>
+                        <select id="flatSelect" class="form-control" style="width: auto; padding: 6px 12px; font-size: 13px;" onchange="window.location.href='?flat_id='+this.value">
+                            {% for a in assignments %}
+                                <option value="{{ a.flat_id }}" {% if a.flat_id == active_assignment.flat_id %}selected{% endif %}>
+                                    Flat {{ a.flat.floor.wing.name if a.flat.floor and a.flat.floor.wing else '' }}-{{ a.flat.flat_number }} ({{ a.relation_type }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
+
+                <a href="{{ url_for('complaints') }}" class="btn btn-secondary btn-sm">
+                    <span>🛠</span> Lodge Complaint
+                </a>
+                <a href="{{ url_for('notices') }}" class="btn btn-secondary btn-sm">
+                    <span>📢</span> Notices
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 Summary Cards -->
+    <div class="stats-grid" style="margin-bottom: 24px;">
+        <!-- Current Outstanding Dues -->
+        <div class="stat-card" style="border-color: {% if total_outstanding_dues > 0 %}rgba(239, 68, 68, 0.35){% else %}rgba(16, 185, 129, 0.35){% endif %};">
+            <div class="stat-card-label">
+                <span>Outstanding Dues</span>
+                {% if total_outstanding_dues > 0 %}
+                    <span class="badge badge-danger">Payment Due</span>
+                {% else %}
+                    <span class="badge badge-success">All Clear</span>
+                {% endif %}
+            </div>
+            <div class="stat-card-value" style="color: {% if total_outstanding_dues > 0 %}#f87171{% else %}#34d399{% endif %};">
+                {% if total_outstanding_dues > 0 %}
+                    {{ total_outstanding_dues | inr }}
+                {% else %}
+                    ₹0.00
+                {% endif %}
+            </div>
+            <div class="stat-card-hint">
+                {% if total_outstanding_dues > 0 %}
+                    Action required to avoid late fees
+                {% else %}
+                    No pending maintenance payments
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Last Payment Made -->
+        <div class="stat-card" style="border-color: rgba(99, 102, 241, 0.25);">
+            <div class="stat-card-label">
+                <span>Last Payment Made</span>
+                <span class="badge badge-info">Verified</span>
+            </div>
+            <div class="stat-card-value" style="color: #818cf8;">
+                {% if latest_payment %}
+                    {{ latest_payment.amount | inr }}
+                {% else %}
+                    —
+                {% endif %}
+            </div>
+            <div class="stat-card-hint">
+                {% if latest_payment %}
+                    Paid on {{ latest_payment.payment_date.strftime('%d %b %Y') }} ({{ latest_payment.payment_mode }})
+                {% else %}
+                    No payments recorded yet
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Active Complaints -->
+        <div class="stat-card" style="border-color: rgba(245, 158, 11, 0.25);">
+            <div class="stat-card-label">
+                <span>Active Complaints</span>
+                <span class="badge {% if active_complaints_count > 0 %}badge-warning{% else %}badge-neutral{% endif %}">
+                    {{ active_complaints_count }}
+                </span>
+            </div>
+            <div class="stat-card-value" style="color: {% if active_complaints_count > 0 %}#f59e0b{% else %}var(--text-main){% endif %};">
+                {{ active_complaints_count }}
+            </div>
+            <div class="stat-card-hint">
+                <a href="{{ url_for('complaints') }}" style="color: var(--indigo-400); text-decoration: none;">View helpdesk tickets →</a>
+            </div>
+        </div>
+
+        <!-- Active Notices -->
+        <div class="stat-card" style="border-color: rgba(99, 102, 241, 0.25);">
+            <div class="stat-card-label">
+                <span>Active Circulars</span>
+                <span class="badge badge-neutral">{{ active_notices_count }} Total</span>
+            </div>
+            <div class="stat-card-value" style="color: white;">
+                {{ active_notices_count }}
+            </div>
+            <div class="stat-card-hint">
+                <a href="{{ url_for('notices') }}" style="color: var(--indigo-400); text-decoration: none;">View notice board →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Community Announcements Preview -->
+    {% if active_notices %}
+    <div class="glass-card" style="margin-bottom: 24px; border-left: 4px solid var(--primary);">
+        <div class="glass-card-header" style="padding-bottom: 10px;">
+            <h3 style="font-size: 15px; margin: 0; color: white;">📢 Community Circulars & Announcements</h3>
+            <a href="{{ url_for('notices') }}" class="btn btn-secondary btn-sm" style="font-size: 12px; padding: 4px 10px;">All Notices →</a>
+        </div>
+        <div class="glass-card-body" style="padding-top: 6px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                {% for n in active_notices %}
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.03); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="badge {% if n.priority == 'Urgent' %}badge-danger{% elif n.priority == 'Important' %}badge-warning{% else %}badge-neutral{% endif %}" style="font-size: 10px;">{{ n.priority }}</span>
+                        <strong style="color: white; font-size: 13.5px;">{{ n.title }}</strong>
+                    </div>
+                    <span style="font-size: 12px; color: var(--text-muted);">{{ n.created_at.strftime('%d %b %Y') if n.created_at else '' }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 12-Month Maintenance History Table -->
+    <div class="glass-card" style="margin-bottom: 24px;">
+        <div class="glass-card-header">
+            <div>
+                <h3 style="margin: 0; font-size: 16px; color: white;">12-Month Maintenance History</h3>
+                <span style="font-size: 12px; color: var(--text-muted);">Invoices and payment records for Flat {{ active_flat.flat_number }}</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <a href="{{ url_for('member.bills') }}" class="btn btn-secondary btn-sm">Full Bill History</a>
+            </div>
+        </div>
+        <div class="glass-card-body" style="padding: 0;">
+            {% if bill_history %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Month-Year</th>
+                            <th>Bill Amount</th>
+                            <th>Late Fee</th>
+                            <th>Amount Paid</th>
+                            <th>Balance</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in bill_history %}
+                        <tr>
+                            <td>
+                                <strong>{{ calendar.month_name[b.bill_month] }} {{ b.bill_year }}</strong>
+                            </td>
+                            <td>{{ b.total_amount | inr }}</td>
+                            <td style="color: {% if b.penalty_amount and b.penalty_amount > 0 %}#f87171{% else %}var(--text-muted){% endif %};">
+                                {{ (b.penalty_amount or 0) | inr }}
+                            </td>
+                            <td style="color: #34d399;">{{ (b.paid_amount or 0) | inr }}</td>
+                            <td style="font-weight: 700; color: {% if (b.balance_amount or 0) > 0 %}#f87171{% else %}#34d399{% endif %};">
+                                {{ (b.balance_amount or 0) | inr }}
+                            </td>
+                            <td>{{ b.due_date.strftime('%d %b %Y') if b.due_date else '--' }}</td>
+                            <td>
+                                {% if b.status == 'Paid' %}
+                                    <span class="badge badge-success">Paid</span>
+                                {% elif b.status == 'Partial' %}
+                                    <span class="badge badge-warning">Partial</span>
+                                {% else %}
+                                    <span class="badge badge-danger">Unpaid</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">
+                                <a href="{{ url_for('member.bill_detail', bill_id=b.id) }}" class="btn btn-secondary btn-sm" style="font-size: 12px; padding: 4px 10px;">
+                                    View Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">💳</div>
+                <h3>No Maintenance Invoices Issued</h3>
+                <p>There are no maintenance invoices generated for this flat yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recent Complaints filed by this resident -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3 style="margin: 0; font-size: 16px; color: white;">Recent Maintenance Requests</h3>
+            <a href="{{ url_for('complaints') }}" class="btn btn-primary btn-sm">＋ Lodge Complaint</a>
+        </div>
+        <div class="glass-card-body" style="padding: 0;">
+            {% if my_complaints %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Date</th>
+                            <th>Subject</th>
+                            <th>Category</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in my_complaints %}
+                        <tr>
+                            <td><strong>#{{ c.id }}</strong></td>
+                            <td>{{ c.created_at.strftime('%d %b %Y') if c.created_at else '' }}</td>
+                            <td style="color: white; font-weight: 500;">{{ c.title }}</td>
+                            <td><span class="badge badge-neutral">{{ c.category }}</span></td>
+                            <td>
+                                <span class="badge {% if c.priority in ['Emergency', 'High'] %}badge-danger{% elif c.priority == 'Medium' %}badge-warning{% else %}badge-neutral{% endif %}">
+                                    {{ c.priority }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if c.status in ['Resolved', 'Closed'] %}
+                                    <span class="badge badge-success">✓ {{ c.status }}</span>
+                                {% elif c.status == 'In Progress' %}
+                                    <span class="badge badge-warning">⚡ In Progress</span>
+                                {% else %}
+                                    <span class="badge badge-info">Open</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">🛠</div>
+                <h3>No Complaints Filed</h3>
+                <p>Have an issue in your flat or the society premises? Lodge a maintenance ticket for prompt resolution.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Bill #{{ bill.id }} - Flat {{ bill.flat.flat_number }} | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Maintenance</span> / <a href="{{ url_for('maintenance_bills', month=bill.bill_month, year=bill.bill_year) }}">Bills</a> / <strong>Bill #{{ bill.id }}</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <div style="margin-bottom: 4px;">
+            <a href="{{ url_for('maintenance_bills', month=bill.bill_month, year=bill.bill_year) }}" class="btn btn-secondary btn-sm">
+                ← Back to {{ month_name }} {{ bill.bill_year }} Bills
+            </a>
+        </div>
+        <h1>Maintenance Invoice #{{ bill.id }} — Flat {{ bill.flat.flat_number }}</h1>
+        <p>{{ month_name }} {{ bill.bill_year }} billing cycle for {{ bill.flat.floor.wing.building.name }} - Wing {{ bill.flat.floor.wing.name }}.</p>
+    </div>
+    <div>
+        {% if bill.status == 'Paid' %}
+            <span class="badge badge-paid" style="font-size: 14px; padding: 6px 16px;">Paid in Full</span>
+        {% elif bill.status == 'Partial' %}
+            <span class="badge badge-partial" style="font-size: 14px; padding: 6px 16px;">Partially Paid</span>
+        {% else %}
+            <span class="badge badge-unpaid" style="font-size: 14px; padding: 6px 16px;">Unpaid</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Invoice Overview Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-label">Invoice Total</div>
+        <div class="stat-card-value">₹{{ "%.2f"|format(bill.total_amount) }}</div>
+        <div class="stat-card-hint">Generated on {{ bill.bill_date.strftime('%d %b %Y') if bill.bill_date else '--' }}</div>
+    </div>
+
+    <div class="stat-card" style="border-color: rgba(16, 185, 129, 0.25);">
+        <div class="stat-card-label">Amount Collected</div>
+        <div class="stat-card-value" style="color: #34d399;">₹{{ "%.2f"|format(bill.paid_amount) }}</div>
+        <div class="stat-card-hint">{{ payments|length }} payment transactions</div>
+    </div>
+
+    <div class="stat-card" style="border-color: {% if bill.balance_amount > 0 %}rgba(239, 68, 68, 0.25){% else %}rgba(16, 185, 129, 0.25){% endif %};">
+        <div class="stat-card-label">Outstanding Balance</div>
+        <div class="stat-card-value" style="color: {% if bill.balance_amount > 0 %}#f87171{% else %}#34d399{% endif %};">
+            ₹{{ "%.2f"|format(bill.balance_amount) }}
+        </div>
+        <div class="stat-card-hint">Due by {{ bill.due_date.strftime('%d %b %Y') if bill.due_date else '--' }}</div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr minmax(320px, 420px); gap: 24px; align-items: start; margin-bottom: 28px;">
+    <!-- Bill Line Items Breakdown -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Invoice Breakdown & Charges</h3>
+            <span class="badge badge-neutral">{{ bill.items|length }} Components</span>
+        </div>
+        <div class="glass-card-body" style="padding: 0;">
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Calculation</th>
+                            <th>Rate</th>
+                            <th>Quantity</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in bill.items %}
+                            <tr>
+                                <td><strong style="color: white;">{{ item.component_name }}</strong></td>
+                                <td><span class="badge badge-neutral">{{ item.calculation_method }}</span></td>
+                                <td>₹{{ "%.2f"|format(item.rate) }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td style="text-align: right;"><strong style="color: white;">₹{{ "%.2f"|format(item.amount) }}</strong></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr style="border-top: 1px solid var(--border-light); background: rgba(255, 255, 255, 0.02);">
+                            <td colspan="4" style="text-align: right; font-weight: 600; color: var(--text-secondary);">Subtotal:</td>
+                            <td style="text-align: right; font-weight: 700; color: white;">₹{{ "%.2f"|format(bill.subtotal) }}</td>
+                        </tr>
+                        {% if bill.penalty_amount and bill.penalty_amount > 0 %}
+                            <tr style="background: rgba(239, 68, 68, 0.05);">
+                                <td colspan="4" style="text-align: right; font-weight: 600; color: #f87171;">Late Payment Penalty:</td>
+                                <td style="text-align: right; font-weight: 700; color: #f87171;">+₹{{ "%.2f"|format(bill.penalty_amount) }}</td>
+                            </tr>
+                        {% endif %}
+                        <tr style="background: rgba(99, 102, 241, 0.08); font-size: 15px;">
+                            <td colspan="4" style="text-align: right; font-weight: 700; color: #a5b4fc;">Total Bill Amount:</td>
+                            <td style="text-align: right; font-weight: 800; color: white;">₹{{ "%.2f"|format(bill.total_amount) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collect Payment Form (if balance > 0) OR Resident Info -->
+    <div>
+        {% if bill.balance_amount > 0 %}
+            <div class="glass-card" style="margin-bottom: 24px; border-color: rgba(16, 185, 129, 0.35);">
+                <div class="glass-card-header" style="background: rgba(16, 185, 129, 0.08);">
+                    <h3>Record Maintenance Payment</h3>
+                    <span class="badge badge-success">Ledger Credit</span>
+                </div>
+                <div class="glass-card-body">
+                    <form method="POST" action="{{ url_for('record_maintenance_payment', bill_id=bill.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label class="form-label">Payment Amount (₹) *</label>
+                            <input type="number" step="0.01" min="0.01" max="{{ bill.balance_amount }}" name="amount" class="form-control" value="{{ bill.balance_amount }}" required>
+                            <span style="font-size: 11px; color: var(--text-muted);">Max outstanding: ₹{{ "%.2f"|format(bill.balance_amount) }}</span>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label class="form-label">Payment Date *</label>
+                            <input type="date" name="payment_date" class="form-control" value="{{ default_date or '' }}" required>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label class="form-label">Payment Mode *</label>
+                            <select name="payment_mode" class="form-control" required>
+                                <option value="UPI" selected>UPI / QR Code</option>
+                                <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
+                                <option value="Cheque">Cheque</option>
+                                <option value="Cash">Cash</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label class="form-label">Deposit Account *</label>
+                            <select name="account_id" class="form-control" required>
+                                <option value="">Select Financial Account</option>
+                                {% for acc in financial_accounts %}
+                                    <option value="{{ acc.id }}">{{ acc.name }} ({{ acc.account_type }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label class="form-label">Transaction Reference (UTR / Cheque No)</label>
+                            <input type="text" name="reference_number" class="form-control" placeholder="e.g. UPI-123456789">
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label class="form-label">Notes (Optional)</label>
+                            <input type="text" name="notes" class="form-control" placeholder="Optional remark">
+                        </div>
+
+                        <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;">
+                            <span>✓</span> Post Payment & Generate Receipt
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Property & Member Card -->
+        <div class="glass-card">
+            <div class="glass-card-header">
+                <h3>Flat Resident Details</h3>
+                <span class="badge badge-info">Occupant</span>
+            </div>
+            <div class="glass-card-body">
+                {% if primary_member %}
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                        <div class="user-avatar">{{ primary_member.user.full_name[:1] | upper }}</div>
+                        <div>
+                            <strong style="color: white; font-size: 15px;">{{ primary_member.user.full_name }}</strong>
+                            <div style="font-size: 12px; color: var(--text-muted);">{{ primary_member.relation_type }}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                        <div><span style="color: var(--text-muted);">Email:</span> {{ primary_member.user.email }}</div>
+                        <div><span style="color: var(--text-muted);">Mobile:</span> {{ primary_member.user.mobile }}</div>
+                    </div>
+                {% else %}
+                    <div style="color: var(--text-muted); font-size: 13px;">
+                        No primary member currently assigned to Flat {{ bill.flat.flat_number }}.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment History Table -->
+<div class="glass-card">
+    <div class="glass-card-header">
+        <div>
+            <h3>Payment History for this Invoice</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Verified payments credited to financial accounts</span>
+        </div>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if payments %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Payment #</th>
+                            <th>Date</th>
+                            <th>Mode</th>
+                            <th>Amount</th>
+                            <th>Reference</th>
+                            <th>Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in payments %}
+                            <tr>
+                                <td><span class="badge badge-neutral">#{{ p.id }}</span></td>
+                                <td>{{ p.payment_date.strftime('%d %b %Y') if p.payment_date else '--' }}</td>
+                                <td><span class="badge badge-info">{{ p.payment_mode }}</span></td>
+                                <td><strong style="color: #34d399; font-size: 14px;">₹{{ "%.2f"|format(p.amount) }}</strong></td>
+                                <td>{{ p.reference_number or '--' }}</td>
+                                <td>
+                                    <a href="{{ url_for('payment_receipt', payment_id=p.id) }}" class="btn btn-secondary btn-sm">
+                                        View Receipt →
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">₹</div>
+                <h3>No payments recorded yet</h3>
+                <p>Use the form above to record resident payments against this invoice.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

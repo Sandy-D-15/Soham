@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Bills | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Maintenance</span> / <a href="{{ url_for('maintenance_bills') }}">Bills</a> / <strong>Generate Monthly Bills</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <div style="margin-bottom: 4px;">
+            <a href="{{ url_for('maintenance_bills') }}" class="btn btn-secondary btn-sm">← Back to Bills List</a>
+        </div>
+        <h1>Generate Monthly Maintenance Bills</h1>
+        <p>Batch-generate itemized maintenance invoices for all registered flats based on active component rules.</p>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(320px, 440px) 1fr; gap: 24px; align-items: start;">
+    <!-- Generation Form Card -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Billing Parameters</h3>
+            <span class="badge badge-info">Batch</span>
+        </div>
+        <div class="glass-card-body">
+            <form method="POST" action="{{ url_for('generate_maintenance_bills') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Billing Month *</label>
+                        <select name="bill_month" class="form-control" required>
+                            {% for m in range(1, 13) %}
+                                <option value="{{ m }}" {% if m == current_month %}selected{% endif %}>
+                                    {{ calendar.month_name[m] }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Billing Year *</label>
+                        <input type="number" name="bill_year" class="form-control" value="{{ current_year }}" min="2020" max="2035" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Bill Generation Date *</label>
+                        <input type="date" name="bill_date" class="form-control" value="{{ default_bill_date }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Due Date *</label>
+                        <input type="date" name="due_date" class="form-control" value="{{ default_due_date }}" required>
+                    </div>
+                </div>
+
+                <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 20px;">
+                    <div style="font-size: 13px; font-weight: 600; color: #a5b4fc; margin-bottom: 4px;">Duplicate Protection Guarantee</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">
+                        Flats that already have a generated bill for the selected month and year will automatically be skipped to prevent double billing.
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;">
+                    <span>₹</span> Generate All Invoices Now
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Active Components & Target Scope -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Active Components in this Billing Run</h3>
+            <span class="badge badge-success">{{ components|length }} Active Rules</span>
+        </div>
+        <div class="glass-card-body" style="padding: 0;">
+            {% if components %}
+                <div class="table-container" style="border: none; border-radius: 0;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Method</th>
+                                <th>Rate</th>
+                                <th>Target Flats</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in components %}
+                                <tr>
+                                    <td>
+                                        <strong style="color: white;">{{ c.name }}</strong>
+                                        <div style="font-size: 11px; color: var(--text-muted);">{{ c.purpose }}</div>
+                                    </td>
+                                    <td><span class="badge badge-neutral">{{ c.calculation_method }}</span></td>
+                                    <td>
+                                        <strong style="color: #38bdf8;">
+                                            ₹{{ "%.2f"|format(c.amount) }}
+                                            {% if c.calculation_method == 'Per Square Foot' %}/sq.ft{% endif %}
+                                        </strong>
+                                    </td>
+                                    <td><span class="badge badge-info">{{ c.applicable_to }}</span></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">!</div>
+                    <h3>No active billing components!</h3>
+                    <p>You must configure at least one active maintenance component before generating bills.</p>
+                    <a href="{{ url_for('maintenance_components') }}" class="btn btn-primary btn-sm">Configure Components</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

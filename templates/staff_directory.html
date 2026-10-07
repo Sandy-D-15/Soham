@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Staff & Workers Directory | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Management</span> / <strong>Staff Directory</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Staff & Workers Directory</h1>
+        <p>Manage security personnel, cleaners, technicians, and society management staff.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('staff_payments') }}" class="btn btn-secondary">
+            💼 Salary & Payroll →
+        </a>
+    </div>
+</div>
+
+<!-- Staff Summary Stats -->
+<div class="stats-grid" style="margin-bottom: 28px;">
+    <div class="stat-card">
+        <div class="stat-card-label">Total Staff</div>
+        <div class="stat-card-value">{{ staff_list|length }}</div>
+        <div class="stat-card-desc">All registered staff members</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Active Staff</div>
+        <div class="stat-card-value" style="color: #34d399;">
+            {{ staff_list|selectattr("status", "equalto", true)|list|length }}
+        </div>
+        <div class="stat-card-desc">Currently on payroll</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Monthly Payroll</div>
+        <div class="stat-card-value" style="color: #a5b4fc;">
+            ₹{{ "%.2f"|format(total_monthly_payroll) }}
+        </div>
+        <div class="stat-card-desc">Active staff base salaries</div>
+    </div>
+</div>
+
+<!-- Add Staff Member Form -->
+<div class="glass-card" style="margin-bottom: 28px;">
+    <div class="glass-card-header">
+        <h3>Enroll New Staff Member</h3>
+        <span class="badge badge-info">Staff Profile</span>
+    </div>
+    <div class="glass-card-body">
+        <form method="POST" action="{{ url_for('add_staff') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Ramesh Kumar" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role / Designation *</label>
+                    <select name="role" class="form-control" required>
+                        <option value="">Select Role</option>
+                        <option value="Security Guard">Security Guard</option>
+                        <option value="Head Guard / Supervisor">Head Guard / Supervisor</option>
+                        <option value="Cleaner / Sweeper">Cleaner / Sweeper</option>
+                        <option value="Electrician">Electrician</option>
+                        <option value="Plumber">Plumber</option>
+                        <option value="Gardener">Gardener</option>
+                        <option value="Lift Operator">Lift Operator</option>
+                        <option value="Society Manager">Society Manager</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contact Phone *</label>
+                    <input type="text" name="phone" class="form-control" placeholder="10-digit mobile number" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Monthly Salary (₹) *</label>
+                    <input type="number" step="0.01" min="0" name="salary" class="form-control" placeholder="e.g. 15000.00" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date of Joining *</label>
+                    <input type="date" name="joining_date" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Govt ID Number (Aadhaar / PAN)</label>
+                    <input type="text" name="id_proof_number" class="form-control" placeholder="Optional Aadhaar / PAN">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Emergency Contact Phone</label>
+                    <input type="text" name="emergency_contact" class="form-control" placeholder="Optional emergency phone">
+                </div>
+            </div>
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">
+                    <span>＋</span> Register Staff Member
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Staff Directory Table -->
+<div class="glass-card">
+    <div class="glass-card-header">
+        <h3>Enrolled Staff Directory</h3>
+        <span class="badge badge-neutral">{{ staff_list|length }} Members</span>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if staff_list %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Staff Member</th>
+                            <th>Role / Designation</th>
+                            <th>Phone</th>
+                            <th>Monthly Salary</th>
+                            <th>Joining Date</th>
+                            <th>Govt ID</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for staff in staff_list %}
+                            <tr>
+                                <td><span class="badge badge-neutral">#{{ staff.id }}</span></td>
+                                <td>
+                                    <strong style="color: white; font-size: 14px;">{{ staff.name }}</strong>
+                                    {% if staff.emergency_contact %}
+                                        <div style="font-size: 11px; color: var(--text-muted);">Emerg: {{ staff.emergency_contact }}</div>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge badge-indigo">{{ staff.role }}</span></td>
+                                <td>{{ staff.phone }}</td>
+                                <td><strong style="color: #34d399;">₹{{ "%.2f"|format(staff.salary) }}</strong></td>
+                                <td>{{ staff.joining_date.strftime('%d %b %Y') if staff.joining_date else '--' }}</td>
+                                <td>{{ staff.id_proof_number or '—' }}</td>
+                                <td>
+                                    {% if staff.status %}
+                                        <span class="badge badge-success">Active</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: right;">
+                                    <form method="POST" action="{{ url_for('toggle_staff_status', staff_id=staff.id) }}" style="display: inline-block;"
+                                          {% if staff.status %}onsubmit="return confirm('Deactivate this staff member? They will no longer be included in automatic payroll generation.');"{% endif %}>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn {% if staff.status %}btn-danger{% else %}btn-success{% endif %} btn-sm">
+                                            {% if staff.status %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">👷</div>
+                <h3>No Staff Registered</h3>
+                <p>Register your society guards, cleaners, and technical staff to manage payroll and maintenance assignments.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

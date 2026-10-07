@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Management Portal</span> / <strong>Dashboard</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Management Overview</h1>
+        <p>{{ current_society.name if current_society else "Housing Society" }} • Comprehensive Operational & Financial Status</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('admin.requests', status='pending') }}" class="btn btn-secondary btn-sm" style="position: relative;">
+            <span>📋</span> Resident Requests
+            {% if pending_requests_count > 0 %}
+                <span class="badge badge-warning" style="margin-left: 6px; font-weight: 700;">{{ pending_requests_count }}</span>
+            {% endif %}
+        </a>
+        <a href="{{ url_for('generate_maintenance_bills') }}" class="btn btn-primary btn-sm">
+            <span>＋</span> Generate Bills
+        </a>
+    </div>
+</div>
+
+<!-- Top Row: 6 Stat Cards -->
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <!-- 1. Pending Requests -->
+    <a href="{{ url_for('admin.requests', status='pending') }}" class="glass-card stat-card-link" style="text-decoration: none; color: inherit; padding: 20px; transition: transform 0.2s;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Pending Requests</span>
+            <span style="font-size: 20px;">📝</span>
+        </div>
+        <div style="font-size: 28px; font-weight: 700; color: {% if pending_requests_count > 0 %}#f59e0b{% else %}var(--text-main){% endif %};">
+            {{ pending_requests_count }}
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+            {% if pending_requests_count > 0 %}Awaiting admin approval{% else %}All caught up{% endif %}
+        </div>
+    </a>
+
+    <!-- 2. Occupancy & Members -->
+    <a href="{{ url_for('members') }}" class="glass-card stat-card-link" style="text-decoration: none; color: inherit; padding: 20px; transition: transform 0.2s;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Occupancy &amp; Members</span>
+            <span style="font-size: 20px;">🏢</span>
+        </div>
+        <div style="font-size: 24px; font-weight: 700;">
+            {{ structure_data.occupied_flats }} <span style="font-size: 16px; color: var(--text-muted); font-weight: 500;">/ {{ structure_data.total_flats }} Flats</span>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+            {{ structure_data.total_members }} registered members
+        </div>
+    </a>
+
+    <!-- 3. This Month: Billed -->
+    <a href="{{ url_for('maintenance_bills') }}" class="glass-card stat-card-link" style="text-decoration: none; color: inherit; padding: 20px; transition: transform 0.2s;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">This Month Billed</span>
+            <span style="font-size: 20px;">📜</span>
+        </div>
+        <div style="font-size: 26px; font-weight: 700; color: #818cf8;">
+            {{ billing_data.this_month_billed | inr }}
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+            {{ calendar.month_name[calendar.datetime.date.today().month] }} billing cycle
+        </div>
+    </a>
+
+    <!-- 4. This Month: Collected -->
+    <a href="{{ url_for('finance_accounts') }}" class="glass-card stat-card-link" style="text-decoration: none; color: inherit; padding: 20px; transition: transform 0.2s;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">This Month Collected</span>
+            <span style="font-size: 20px;">💰</span>
+        </div>
+        <div style="font-size: 26px; font-weight: 700; color: #10b981;">
+            {{ billing_data.this_month_collected | inr }}
+        </div>
+        <div style="margin-top: 8px;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; color: var(--text-muted);">
+                <span>Collection rate</span>
+                <span>{{ billing_data.collection_pct }}%</span>
+            </div>
+            <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                <div style="height: 100%; width: {{ billing_data.collection_pct }}%; background: #10b981; border-radius: 2px;"></div>
+            </div>
+        </div>
+    </a>
+
+    <!-- 5. Outstanding Dues -->
+    <a href="{{ url_for('maintenance_bills') }}" class="glass-card stat-card-link" style="text-decoration: none; color: inherit; padding: 20px; transition: transform 0.2s;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Outstanding Dues</span>
+            <span style="font-size: 20px;">⚠️</span>
+        </div>
+        <div style="font-size: 26px; font-weight: 700; color: {% if billing_data.total_outstanding_dues > 0 %}#ef4444{% else %}#10b981{% endif %};">
+            {{ billing_data.total_outstanding_dues | inr }}
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+            Across all pending &amp; overdue bills
+        </div>
+    </a>
+
+    <!-- 6. Open Complaints -->
+    <a href="{{ url_for('complaints') }}" class="glass-card stat-card-link" style="text-decoration: none; color: inherit; padding: 20px; transition: transform 0.2s;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Open Complaints</span>
+            <span style="font-size: 20px;">🛠️</span>
+        </div>
+        <div style="font-size: 26px; font-weight: 700; color: {% if open_complaints_count > 0 %}#f59e0b{% else %}var(--text-main){% endif %};">
+            {{ open_complaints_count }}
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+            {% if emergency_high_count > 0 %}
+                <span style="color: #ef4444; font-weight: 600;">{{ emergency_high_count }} Emergency/High priority</span>
+            {% else %}
+                No critical tickets
+            {% endif %}
+        </div>
+    </a>
+</div>
+
+<!-- Second Row: Defaulters & Recent Complaints -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+    <!-- Defaulters Table -->
+    <div class="glass-card" style="padding: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-size: 16px; font-weight: 600;">Top Outstanding Dues (Defaulters)</h3>
+            <a href="{{ url_for('maintenance_bills') }}" class="btn btn-secondary btn-sm" style="font-size: 12px; padding: 4px 10px;">View All Bills</a>
+        </div>
+        {% if top_defaulters %}
+            <div class="table-responsive">
+                <table class="table" style="font-size: 13px;">
+                    <thead>
+                        <tr>
+                            <th>Flat</th>
+                            <th>Resident</th>
+                            <th>Unpaid Cycles</th>
+                            <th style="text-align: right;">Outstanding</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in top_defaulters %}
+                            <tr>
+                                <td>
+                                    <strong>{{ d.flat.floor.wing.name if d.flat.floor and d.flat.floor.wing else '' }}-{{ d.flat.flat_number }}</strong>
+                                </td>
+                                <td>
+                                    {{ d.primary_member.user.full_name if d.primary_member and d.primary_member.user else 'Unassigned' }}
+                                </td>
+                                <td>
+                                    <span class="badge badge-warning">{{ d.unpaid_months }} Month(s)</span>
+                                </td>
+                                <td style="text-align: right; font-weight: 700; color: #ef4444;">
+                                    {{ d.outstanding_amount | inr }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 36px 12px; color: var(--text-muted);">
+                <div style="font-size: 32px; margin-bottom: 8px;">🎉</div>
+                <p style="font-size: 14px; font-weight: 500;">No pending maintenance defaulters!</p>
+                <span style="font-size: 12px;">All flats are up to date on maintenance dues.</span>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Complaints -->
+    <div class="glass-card" style="padding: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-size: 16px; font-weight: 600;">Recent Service Requests</h3>
+            <a href="{{ url_for('complaints') }}" class="btn btn-secondary btn-sm" style="font-size: 12px; padding: 4px 10px;">View All</a>
+        </div>
+        {% if recent_complaints %}
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% for c in recent_complaints %}
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; font-size: 13px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
+                                <strong style="color: var(--text-main);">{{ c.flat.floor.wing.name if c.flat and c.flat.floor and c.flat.floor.wing else '' }}-{{ c.flat.flat_number if c.flat else 'General' }}</strong>
+                                <span style="color: var(--text-muted);">•</span>
+                                <span>{{ c.title }}</span>
+                            </div>
+                            <div style="font-size: 11.5px; color: var(--text-muted);">
+                                Raised {{ c.created_at.strftime('%d %b %Y') if c.created_at else '' }} • {{ c.category }}
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="badge {% if c.priority == 'Emergency' %}badge-danger{% elif c.priority == 'High' %}badge-warning{% else %}badge-info{% endif %}">
+                                {{ c.priority }}
+                            </span>
+                            <span class="badge {% if c.status == 'Resolved' %}badge-success{% elif c.status == 'In Progress' %}badge-warning{% else %}badge-secondary{% endif %}">
+                                {{ c.status }}
+                            </span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 36px 12px; color: var(--text-muted);">
+                <div style="font-size: 32px; margin-bottom: 8px;">✨</div>
+                <p style="font-size: 14px; font-weight: 500;">No complaints reported</p>
+                <span style="font-size: 12px;">Resident service requests will appear here.</span>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Third Row: Recent Payments (5), Latest Notices (3), Recent Activity (8) -->
+<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+    <!-- Recent Payments -->
+    <div class="glass-card" style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h4 style="font-size: 15px; font-weight: 600;">Recent Payments</h4>
+            <a href="{{ url_for('finance_accounts') }}" style="font-size: 12px; color: #a5b4fc; text-decoration: none;">View Ledger</a>
+        </div>
+        {% if recent_payments %}
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px;">
+                {% for p in recent_payments %}
+                    <div style="display: flex; justify-content: space-between; padding: 8px 10px; background: rgba(255,255,255,0.02); border-radius: 8px;">
+                        <div>
+                            <div><strong>Flat {{ p.bill.flat.flat_number if p.bill and p.bill.flat else '—' }}</strong></div>
+                            <div style="font-size: 11px; color: var(--text-muted);">{{ p.payment_date.strftime('%d %b') if p.payment_date else '' }} • {{ p.payment_mode }}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 700; color: #10b981;">{{ p.amount | inr }}</div>
+                            <a href="{{ url_for('payment_receipt', payment_id=p.id) }}" style="font-size: 11px; color: #a5b4fc; text-decoration: none;">Receipt #{{ p.id }}</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 28px 8px; color: var(--text-muted); font-size: 12.5px;">
+                Nothing here yet
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Latest Notices -->
+    <div class="glass-card" style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h4 style="font-size: 15px; font-weight: 600;">Active Notices</h4>
+            <a href="{{ url_for('notices') }}" style="font-size: 12px; color: #a5b4fc; text-decoration: none;">Manage</a>
+        </div>
+        {% if latest_notices %}
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px;">
+                {% for n in latest_notices %}
+                    <div style="padding: 8px 10px; background: rgba(255,255,255,0.02); border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                            <strong style="color: var(--text-main);">{{ n.title }}</strong>
+                            {% if n.is_pinned %}<span title="Pinned">📌</span>{% endif %}
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                            {{ n.category }} • {{ n.created_at.strftime('%d %b %Y') if n.created_at else '' }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 28px 8px; color: var(--text-muted); font-size: 12.5px;">
+                Nothing here yet
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Audit Logs -->
+    <div class="glass-card" style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h4 style="font-size: 15px; font-weight: 600;">System Activity Trail</h4>
+            <a href="{{ url_for('audit_logs') }}" style="font-size: 12px; color: #a5b4fc; text-decoration: none;">View All</a>
+        </div>
+        {% if recent_activity %}
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+                {% for log in recent_activity %}
+                    <div style="padding: 6px 8px; border-left: 2px solid #818cf8; background: rgba(255,255,255,0.02); border-radius: 0 6px 6px 0;">
+                        <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 10.5px;">
+                            <strong style="color: #c7d2fe;">{{ log.action }}</strong>
+                            <span>{{ log.created_at.strftime('%H:%M %d/%m') if log.created_at else '' }}</span>
+                        </div>
+                        <div style="color: var(--text-main); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ log.details or 'State updated' }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 28px 8px; color: var(--text-muted); font-size: 12.5px;">
+                Nothing here yet
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

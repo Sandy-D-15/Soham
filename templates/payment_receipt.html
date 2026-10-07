@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Receipt {{ receipt.receipt_number }} | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Maintenance</span> / <a href="{{ url_for('maintenance_bills') }}">Bills</a> / <strong>Receipt {{ receipt.receipt_number }}</strong>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .app-sidebar, .top-navbar, .page-header, .ambient-glow, .btn {
+        display: none !important;
+    }
+    .app-main {
+        margin-left: 0 !important;
+    }
+    .content-body {
+        padding: 0 !important;
+    }
+    .receipt-container {
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+    }
+    .receipt-container * {
+        color: black !important;
+        text-shadow: none !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <div style="margin-bottom: 4px;">
+            {% if current_user.role == 'secretary' %}
+                <a href="{{ url_for('maintenance_bill_detail', bill_id=bill.id) }}" class="btn btn-secondary btn-sm">← Back to Bill #{{ bill.id }}</a>
+            {% else %}
+                <a href="{{ url_for('member_bill_detail', bill_id=bill.id) }}" class="btn btn-secondary btn-sm">← Back to My Bill</a>
+            {% endif %}
+        </div>
+        <h1>Payment Receipt</h1>
+        <p>Official acknowledgment of maintenance payment.</p>
+    </div>
+    <button type="button" class="btn btn-primary" onclick="window.print()">
+        <span>⎙</span> Print / Save Receipt PDF
+    </button>
+</div>
+
+<!-- Receipt Card -->
+<div class="glass-card receipt-container" style="max-width: 780px; margin: 0 auto; background: var(--bg-surface-elevated); border: 1px solid var(--border-light);">
+    <div class="glass-card-body" style="padding: 40px;">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--border-light); padding-bottom: 24px; margin-bottom: 28px;">
+            <div>
+                <div class="badge badge-success" style="margin-bottom: 8px;">PAYMENT VOUCHER</div>
+                <h2 style="font-family: var(--font-heading); font-size: 22px; font-weight: 700; color: white;">
+                    {{ current_society.name if current_society else "Housing Society" }}
+                </h2>
+                <div style="color: var(--text-secondary); font-size: 13px; max-width: 400px; margin-top: 4px;">
+                    {{ current_society.address if current_society and current_society.address else "" }}
+                </div>
+                {% if current_society and current_society.registration_number %}
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                        Reg No: {{ current_society.registration_number }}
+                    </div>
+                {% endif %}
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.05em;">Receipt Number</div>
+                <div style="font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: var(--indigo-500);">
+                    {{ receipt.receipt_number }}
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                    Date: {{ payment.payment_date.strftime('%d %B %Y') if payment.payment_date else '--' }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Receipt Details Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; font-size: 14px;">
+            <div style="background: rgba(255, 255, 255, 0.02); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 8px;">Received From</div>
+                <div style="font-weight: 700; color: white; font-size: 16px;">
+                    {{ primary_member.user.full_name if primary_member else "Resident" }}
+                </div>
+                <div style="color: var(--text-secondary); margin-top: 4px;">
+                    Flat {{ bill.flat.flat_number }}, {{ bill.flat.floor.wing.building.name }} - Wing {{ bill.flat.floor.wing.name }}
+                </div>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.02); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 8px;">Payment Details</div>
+                <div><span style="color: var(--text-muted);">Invoice Reference:</span> Bill #{{ bill.id }} ({{ month_name }} {{ bill.bill_year }})</div>
+                <div style="margin-top: 4px;"><span style="color: var(--text-muted);">Payment Mode:</span> <span class="badge badge-info">{{ payment.payment_mode }}</span></div>
+                {% if payment.reference_number %}
+                    <div style="margin-top: 4px;"><span style="color: var(--text-muted);">Txn Ref / UTR:</span> {{ payment.reference_number }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Amount Box -->
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.05) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 20px; text-align: center; margin-bottom: 32px;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #6ee7b7; letter-spacing: 0.08em; margin-bottom: 4px;">Total Amount Received</div>
+            <div style="font-family: var(--font-heading); font-size: 32px; font-weight: 800; color: #34d399;">
+                ₹{{ "%.2f"|format(payment.amount) }}
+            </div>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                Recorded towards Maintenance Bill #{{ bill.id }}
+            </div>
+        </div>
+
+        <!-- Signatures & Footer Note -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 24px; border-top: 1px dashed var(--border-light);">
+            <div style="font-size: 12px; color: var(--text-muted); max-width: 380px;">
+                This is a computer-generated receipt issued by {{ current_society.name if current_society else "the Society" }}. No physical signature is required.
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 14px; font-weight: 600; color: white;">Authorized Signatory</div>
+                <div style="font-size: 12px; color: var(--text-muted);">Hon. Secretary / Treasurer</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

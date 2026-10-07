@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resident Registration | {{ society.name if society and society.name else "Housing Society" }}</title>
+    <!-- Flash-free Theme Initializer -->
+    <script>
+        (function() {
+            var stored = localStorage.getItem('theme');
+            var theme = stored ? stored : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #070b16;
+            --surface: rgba(17, 24, 39, 0.82);
+            --surface-solid: #111827;
+            --border: rgba(255, 255, 255, 0.12);
+            --text: #f9fafb;
+            --muted: #9ca3af;
+            --accent: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --select-bg: #111827;
+            --shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+
+            --bg-dark: #070b16;
+            --surface-glass: rgba(17, 24, 39, 0.82);
+            --border-glass: rgba(255, 255, 255, 0.12);
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --text-dim: #6b7280;
+            --input-bg: rgba(15, 23, 42, 0.7);
+            --input-border: rgba(255, 255, 255, 0.14);
+            --info: #3b82f4;
+        }
+
+        :root[data-theme="light"] {
+            color-scheme: light;
+            --bg: #f5f7fb;
+            --surface: #ffffff;
+            --surface-solid: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --muted: #64748b;
+            --accent: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --select-bg: #ffffff;
+            --shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+
+            --bg-dark: #f5f7fb;
+            --surface-glass: rgba(255, 255, 255, 0.95);
+            --border-glass: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --text-dim: #94a3b8;
+            --input-bg: #ffffff;
+            --input-border: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(79, 70, 229, 0.25), transparent 45%),
+                radial-gradient(circle at 90% 90%, rgba(37, 99, 235, 0.22), transparent 45%),
+                linear-gradient(135deg, #040711, #0b1120, #0f172a);
+            color: var(--text-main);
+            padding: 24px 16px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .ambient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            pointer-events: none;
+            opacity: 0.45;
+            animation: floatOrb 12s ease-in-out infinite alternate;
+        }
+        .orb-1 { width: 350px; height: 350px; background: #6366f1; top: -100px; left: -100px; }
+        .orb-2 { width: 300px; height: 300px; background: #2563eb; bottom: -80px; right: -80px; animation-delay: 2s; }
+
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(25px, -20px); }
+        }
+
+        /* TASK 2: Select options readable in both themes */
+        select, select option, select optgroup {
+            background-color: var(--select-bg);
+            color: var(--text);
+        }
+        select option:checked, select option:hover {
+            background-color: var(--accent);
+            color: #fff;
+        }
+
+        .theme-toggle-floating {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            color: var(--text-main);
+            font-size: 18px;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+        }
+        .theme-toggle-floating:hover {
+            transform: scale(1.08);
+            border-color: var(--primary);
+        }
+
+        :root[data-theme="light"] body {
+            background:
+                radial-gradient(circle at 10% 10%, rgba(79, 70, 229, 0.08), transparent 45%),
+                radial-gradient(circle at 90% 90%, rgba(37, 99, 235, 0.06), transparent 45%),
+                linear-gradient(135deg, #eef2f6, #f5f7fb, #ffffff);
+            color: var(--text-main);
+        }
+        :root[data-theme="light"] .header-title {
+            color: var(--text-main) !important;
+        }
+        :root[data-theme="light"] .form-input {
+            background: #ffffff;
+            color: var(--text-main);
+            border-color: #cbd5e1;
+        }
+        :root[data-theme="light"] .form-input:focus {
+            background: #ffffff;
+            border-color: var(--primary);
+        }
+        :root[data-theme="light"] .form-label {
+            color: var(--text-main);
+        }
+        :root[data-theme="light"] .pwd-container .pwd-toggle {
+            color: var(--text-muted);
+        }
+        :root[data-theme="light"] .ambient-orb {
+            opacity: 0.15;
+        }
+
+        .register-card {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 540px;
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border-radius: 22px;
+            padding: 36px 32px;
+            box-shadow:
+                0 25px 60px -15px rgba(0, 0, 0, 0.7),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            animation: cardAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes cardAppear {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .header-subtitle {
+            font-size: 13.5px;
+            color: var(--text-muted);
+        }
+
+        /* Flash Alerts */
+        .alert-box {
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .alert-danger { background: rgba(239, 68, 68, 0.16); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; }
+        .alert-warning { background: rgba(245, 158, 11, 0.16); border: 1px solid rgba(245, 158, 11, 0.35); color: #fde68a; }
+        .alert-success { background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.35); color: #a7f3d0; }
+        .alert-close { background: none; border: none; color: inherit; cursor: pointer; font-size: 16px; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .col-full { grid-column: span 2; }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 10px;
+            padding: 10px 13px;
+            font-size: 13.5px;
+            color: #ffffff;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: #818cf8;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+            background: rgba(15, 23, 42, 0.85);
+        }
+
+        .form-select option {
+            background: #111827;
+            color: #ffffff;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 64px;
+        }
+
+        /* Password meter */
+        .pwd-strength-container {
+            margin-top: 6px;
+        }
+        .pwd-bar-bg {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .pwd-bar-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+        .pwd-text {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Consent checkbox */
+        .checkbox-label {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+            cursor: pointer;
+            user-select: none;
+            margin: 10px 0 18px;
+            line-height: 1.4;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            accent-color: var(--primary);
+            width: 16px;
+            height: 16px;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            border: none;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 14.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            background: linear-gradient(135deg, #4338ca, #3730a3);
+            transform: translateY(-1px);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .footer-note {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .footer-note a {
+            color: #a5b4fc;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        @media (max-width: 520px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .col-full { grid-column: span 1; }
+            .register-card { padding: 24px 18px; }
+        }
+    </style>
+</head>
+<body>
+    <button type="button" class="theme-toggle-floating" id="themeToggleBtn" aria-label="Toggle theme mode" aria-pressed="false" title="Switch Theme">
+        <span class="theme-icon-dark">🌙</span>
+        <span class="theme-icon-light" style="display: none;">☀️</span>
+    </button>
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+
+    <div class="register-card">
+        <div class="header-section">
+            <h1 class="header-title">Resident Self-Registration</h1>
+            <p class="header-subtitle">{{ society.name if society and society.name else "Housing Society Portal" }}</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert-box alert-{{ 'danger' if category in ['error', 'danger'] else category }}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="alert-close" onclick="this.parentElement.remove()">×</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('auth.register') }}" id="regForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-grid">
+                <!-- Full Name -->
+                <div class="form-group col-full">
+                    <label class="form-label">Full Name *</label>
+                    <input
+                        type="text"
+                        name="full_name"
+                        id="fullNameInput"
+                        class="form-input"
+                        placeholder="e.g. Ramesh Kumar"
+                        value="{{ form_data.full_name if form_data else '' }}"
+                        required
+                        minlength="3"
+                        maxlength="100"
+                    >
+                </div>
+
+                <!-- Email Address -->
+                <div class="form-group">
+                    <label class="form-label">Email Address *</label>
+                    <input
+                        type="email"
+                        name="email"
+                        id="emailInput"
+                        class="form-input"
+                        placeholder="ramesh@example.com"
+                        value="{{ form_data.email if form_data else '' }}"
+                        required
+                    >
+                </div>
+
+                <!-- Mobile Number -->
+                <div class="form-group">
+                    <label class="form-label">Mobile Number (10 Digits) *</label>
+                    <input
+                        type="tel"
+                        name="mobile"
+                        id="mobileInput"
+                        class="form-input"
+                        placeholder="e.g. 9820012345"
+                        value="{{ form_data.mobile if form_data else '' }}"
+                        required
+                        pattern="[6-9][0-9]{9}"
+                    >
+                </div>
+
+                <!-- Wing / Building -->
+                <div class="form-group">
+                    <label class="form-label">Wing / Building *</label>
+                    <select name="wing_id" id="wingSelect" class="form-select" required onchange="handleWingChange(this.value)">
+                        <option value="">Select Wing...</option>
+                        {% for wing in wings %}
+                            <option value="{{ wing.id }}" {% if form_data and form_data.wing_id == wing.id|string %}selected{% endif %}>
+                                {{ wing.name }} {% if wing.building %}({{ wing.building.name }}){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Flat Number (Dynamic) -->
+                <div class="form-group">
+                    <label class="form-label">Flat Number *</label>
+                    <select name="flat_id" id="flatSelect" class="form-select" required>
+                        <option value="">-- Choose Wing First --</option>
+                    </select>
+                </div>
+
+                <!-- Relation to Flat -->
+                <div class="form-group">
+                    <label class="form-label">Relationship to Flat *</label>
+                    <select name="relation_type" class="form-select" required>
+                        <option value="Owner" {% if form_data and form_data.relation_type == 'Owner' %}selected{% endif %}>Owner</option>
+                        <option value="Tenant" {% if form_data and form_data.relation_type == 'Tenant' %}selected{% endif %}>Tenant</option>
+                        <option value="Family Member" {% if form_data and form_data.relation_type == 'Family Member' %}selected{% endif %}>Family Member</option>
+                    </select>
+                </div>
+
+                <!-- Password -->
+                <div class="form-group">
+                    <label class="form-label">Password (Min 8 Chars) *</label>
+                    <input
+                        type="password"
+                        name="password"
+                        id="pwdInput"
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                        minlength="8"
+                        oninput="checkPasswordStrength(this.value)"
+                    >
+                    <div class="pwd-strength-container">
+                        <div class="pwd-bar-bg">
+                            <div class="pwd-bar-fill" id="pwdBar"></div>
+                        </div>
+                        <div class="pwd-text">
+                            <span id="pwdLabel">Strength</span>
+                            <span id="pwdHint">Letters &amp; numbers</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confirm Password -->
+                <div class="form-group col-full">
+                    <label class="form-label">Confirm Password *</label>
+                    <input
+                        type="password"
+                        name="confirm_password"
+                        id="confirmPwdInput"
+                        class="form-input"
+                        placeholder="••••••••"
+                        required
+                        minlength="8"
+                    >
+                </div>
+
+                <!-- Additional Notes -->
+                <div class="form-group col-full">
+                    <label class="form-label">Additional Notes (Optional, max 300 chars)</label>
+                    <textarea
+                        name="notes"
+                        class="form-textarea"
+                        placeholder="e.g. Registered deed holder since 2024"
+                        maxlength="300"
+                    >{{ form_data.notes if form_data else '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Consent Checkbox -->
+            <label class="checkbox-label">
+                <input type="checkbox" name="consent" value="1" required>
+                <span>I confirm that the details provided are accurate and understand that registration requires society administration approval before account activation.</span>
+            </label>
+
+            <button type="submit" class="btn-submit" id="submitBtn">Submit Registration Request</button>
+        </form>
+
+        <div class="footer-note">
+            Already registered? <a href="{{ url_for('auth.login') }}">Back to Sign In</a>
+        </div>
+    </div>
+
+    <script>
+        async function handleWingChange(wingId) {
+            const flatSelect = document.getElementById("flatSelect");
+            if (!wingId) {
+                flatSelect.innerHTML = '<option value="">-- Choose Wing First --</option>';
+                return;
+            }
+
+            flatSelect.innerHTML = '<option value="">Loading flats...</option>';
+            try {
+                const res = await fetch(`/api/register/flats?wing_id=${wingId}`);
+                if (!res.ok) throw new Error("Failed to load flats");
+                const flats = await res.json();
+
+                if (flats.length === 0) {
+                    flatSelect.innerHTML = '<option value="">No flats found in this wing</option>';
+                    return;
+                }
+
+                flatSelect.innerHTML = '<option value="">Select Flat...</option>';
+                const preselectedFlat = "{{ form_data.flat_id if form_data else '' }}";
+                flats.forEach(f => {
+                    const opt = document.createElement("option");
+                    opt.value = f.id;
+                    opt.textContent = `Flat ${f.flat_number} (${f.flat_type || 'Residential'})`;
+                    if (preselectedFlat && String(f.id) === String(preselectedFlat)) {
+                        opt.selected = true;
+                    }
+                    flatSelect.appendChild(opt);
+                });
+            } catch (err) {
+                flatSelect.innerHTML = '<option value="">Error loading flats</option>';
+            }
+        }
+
+        // Trigger on load if wing selected
+        window.addEventListener("DOMContentLoaded", () => {
+            const wingVal = document.getElementById("wingSelect").value;
+            if (wingVal) {
+                handleWingChange(wingVal);
+            }
+        });
+
+        function checkPasswordStrength(pwd) {
+            const bar = document.getElementById("pwdBar");
+            const label = document.getElementById("pwdLabel");
+            let score = 0;
+
+            if (pwd.length >= 8) score += 1;
+            if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score += 1;
+            if (/[0-9]/.test(pwd)) score += 1;
+            if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+
+            if (pwd.length < 8) {
+                bar.style.width = "20%";
+                bar.style.backgroundColor = "var(--danger)";
+                label.textContent = "Too short";
+            } else if (score <= 2) {
+                bar.style.width = "40%";
+                bar.style.backgroundColor = "var(--warning)";
+                label.textContent = "Fair";
+            } else if (score === 3) {
+                bar.style.width = "75%";
+                bar.style.backgroundColor = "var(--info)";
+                label.textContent = "Good";
+            } else {
+                bar.style.width = "100%";
+                bar.style.backgroundColor = "var(--success)";
+                label.textContent = "Strong";
+            }
+        }
+
+        // Theme Toggle
+        (function initTheme() {
+            const btn = document.getElementById("themeToggleBtn");
+            if (!btn) return;
+            const darkIcon = btn.querySelector('.theme-icon-dark');
+            const lightIcon = btn.querySelector('.theme-icon-light');
+
+            function syncUI(theme) {
+                const isDark = theme === 'dark';
+                btn.setAttribute('aria-pressed', isDark ? 'false' : 'true');
+                if (darkIcon && lightIcon) {
+                    darkIcon.style.display = isDark ? 'inline' : 'none';
+                    lightIcon.style.display = isDark ? 'none' : 'inline';
+                }
+            }
+
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            syncUI(current);
+
+            btn.addEventListener('click', function() {
+                const now = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+                const next = now === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                syncUI(next);
+            });
+        })();
+    </script>
+</body>
+</html>

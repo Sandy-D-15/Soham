@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ current_society.name if current_society else "Society Maintenance" }}{% endblock %}</title>
+    
+    <!-- Flash-free Theme Initializer -->
+    <script>
+        (function() {
+            var stored = localStorage.getItem('theme');
+            var theme = stored ? stored : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Ambient Lighting Orbs -->
+<div class="ambient-glow">
+    <div class="ambient-orb-1"></div>
+    <div class="ambient-orb-2"></div>
+</div>
+
+<div class="app-wrapper">
+
+    <!-- Collapsible Modern Sidebar -->
+    <aside class="app-sidebar" id="appSidebar">
+        <div class="sidebar-header">
+            {% if current_society and current_society.logo_filename %}
+                <img src="{{ url_for('society_logo', filename=current_society.logo_filename) }}" alt="Logo" style="width: 36px; height: 36px; border-radius: 8px; object-fit: contain; background: rgba(255,255,255,0.06); padding: 2px;">
+            {% else %}
+                <div class="brand-icon">◈</div>
+            {% endif %}
+            <div class="brand-details">
+                <div class="brand-title">{{ current_society.name if current_society else "Housing Society" }}</div>
+                <div class="brand-subtitle">Portal • 2026</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            {% if current_user.is_authenticated and current_user.role == 'secretary' %}
+                <!-- OVERVIEW -->
+                <div class="nav-section-title">Overview</div>
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-item {% if request.endpoint in ['admin.dashboard', 'dashboard'] %}active{% endif %}">
+                    <span class="nav-icon">⌂</span>
+                    <span>Dashboard</span>
+                </a>
+
+                <!-- RESIDENTS -->
+                <div class="nav-section-title">Residents</div>
+                <a href="{{ url_for('admin.requests') }}" class="nav-item {% if request.endpoint == 'admin.requests' %}active{% endif %}">
+                    <span class="nav-icon">📋</span>
+                    <span style="flex: 1;">Requests</span>
+                    {% if pending_requests_count > 0 %}
+                        <span class="nav-badge">{{ pending_requests_count }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('members') }}" class="nav-item {% if request.endpoint in ['members', 'add_member', 'assign_member_flat'] %}active{% endif %}">
+                    <span class="nav-icon">👥</span>
+                    <span>Members</span>
+                </a>
+                <a href="{{ url_for('buildings') }}" class="nav-item {% if request.endpoint in ['buildings', 'wings', 'floors', 'flats'] %}active{% endif %}">
+                    <span class="nav-icon">🏢</span>
+                    <span>Buildings & Flats</span>
+                </a>
+
+                <!-- FINANCE -->
+                <div class="nav-section-title">Finance</div>
+                <a href="{{ url_for('maintenance_components') }}" class="nav-item {% if request.endpoint == 'maintenance_components' %}active{% endif %}">
+                    <span class="nav-icon">⚙</span>
+                    <span>Bill Components</span>
+                </a>
+                <a href="{{ url_for('generate_maintenance_bills') }}" class="nav-item {% if request.endpoint == 'generate_maintenance_bills' %}active{% endif %}">
+                    <span class="nav-icon">＋</span>
+                    <span>Generate Bills</span>
+                </a>
+                <a href="{{ url_for('maintenance_bills') }}" class="nav-item {% if request.endpoint in ['maintenance_bills', 'maintenance_bill_detail', 'payment_receipt'] %}active{% endif %}">
+                    <span class="nav-icon">💳</span>
+                    <span>Bills & Payments</span>
+                </a>
+                <a href="{{ url_for('expenses') }}" class="nav-item {% if request.endpoint == 'expenses' %}active{% endif %}">
+                    <span class="nav-icon">📉</span>
+                    <span>Expenses</span>
+                </a>
+                <a href="{{ url_for('expense_categories') }}" class="nav-item {% if request.endpoint == 'expense_categories' %}active{% endif %}">
+                    <span class="nav-icon">📁</span>
+                    <span>Expense Categories</span>
+                </a>
+                <a href="{{ url_for('finance_accounts') }}" class="nav-item {% if request.endpoint in ['finance_accounts', 'edit_financial_account_page'] %}active{% endif %}">
+                    <span class="nav-icon">🏦</span>
+                    <span>Bank & Cash Ledger</span>
+                </a>
+                <a href="{{ url_for('reports_index') }}" class="nav-item {% if request.endpoint == 'reports_index' %}active{% endif %}">
+                    <span class="nav-icon">📊</span>
+                    <span>Reports</span>
+                </a>
+
+                <!-- OPERATIONS -->
+                <div class="nav-section-title">Operations</div>
+                <a href="{{ url_for('complaints.index') }}" class="nav-item {% if request.endpoint in ['complaints', 'complaints.index', 'complaints.detail'] %}active{% endif %}">
+                    <span class="nav-icon">🛠</span>
+                    <span style="flex: 1;">Complaints</span>
+                    {% if open_complaints_count > 0 %}
+                        <span class="nav-badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">{{ open_complaints_count }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('staff_directory') }}" class="nav-item {% if request.endpoint == 'staff_directory' %}active{% endif %}">
+                    <span class="nav-icon">👷</span>
+                    <span>Staff</span>
+                </a>
+                <a href="{{ url_for('staff_payments') }}" class="nav-item {% if request.endpoint == 'staff_payments' %}active{% endif %}">
+                    <span class="nav-icon">💰</span>
+                    <span>Staff Payments</span>
+                </a>
+                <a href="{{ url_for('vendors') }}" class="nav-item {% if request.endpoint == 'vendors' %}active{% endif %}">
+                    <span class="nav-icon">🤝</span>
+                    <span>Vendors</span>
+                </a>
+
+                <!-- COMMUNICATION -->
+                <div class="nav-section-title">Communication</div>
+                <a href="{{ url_for('notices') }}" class="nav-item {% if request.endpoint == 'notices' %}active{% endif %}">
+                    <span class="nav-icon">📢</span>
+                    <span>Notices</span>
+                </a>
+
+                <!-- SYSTEM -->
+                <div class="nav-section-title">System</div>
+                <a href="{{ url_for('society_settings') }}" class="nav-item {% if request.endpoint == 'society_settings' %}active{% endif %}">
+                    <span class="nav-icon">⚙</span>
+                    <span>Society Settings</span>
+                </a>
+                <a href="{{ url_for('audit_logs') }}" class="nav-item {% if request.endpoint == 'audit_logs' %}active{% endif %}">
+                    <span class="nav-icon">🛡</span>
+                    <span>Audit Logs</span>
+                </a>
+
+            {% elif current_user.is_authenticated and current_user.role == 'member' %}
+                <!-- MEMBER PORTAL -->
+                <div class="nav-section-title">Resident Portal</div>
+                <a href="{{ url_for('member.dashboard') }}" class="nav-item {% if request.endpoint in ['member.dashboard', 'dashboard'] %}active{% endif %}">
+                    <span class="nav-icon">⌂</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('member.bills') }}" class="nav-item {% if request.endpoint in ['member.bills', 'member_bill_detail'] %}active{% endif %}">
+                    <span class="nav-icon">💳</span>
+                    <span>My Bills</span>
+                </a>
+                <a href="{{ url_for('complaints.index') }}" class="nav-item {% if request.endpoint in ['complaints', 'complaints.index', 'complaints.detail'] %}active{% endif %}">
+                    <span class="nav-icon">🛠</span>
+                    <span>My Complaints</span>
+                </a>
+                <a href="{{ url_for('notices') }}" class="nav-item {% if request.endpoint == 'notices' %}active{% endif %}">
+                    <span class="nav-icon">📢</span>
+                    <span>Notices</span>
+                </a>
+                <a href="{{ url_for('member.profile') }}" class="nav-item {% if request.endpoint == 'member.profile' %}active{% endif %}">
+                    <span class="nav-icon">👤</span>
+                    <span>Profile</span>
+                </a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+            {% if current_user.is_authenticated %}
+                <div class="user-profile-pill">
+                    <div class="user-avatar">{{ current_user.full_name[:1] | upper }}</div>
+                    <div class="user-meta">
+                        <div class="user-meta-name">{{ current_user.full_name }}</div>
+                        <div class="user-meta-role">{{ current_user.role }}</div>
+                    </div>
+                </div>
+                <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline; margin: 0; padding: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="logout-icon-btn" title="Logout">⇥</button>
+                </form>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-sm" style="width: 100%;">Login</a>
+            {% endif %}
+        </div>
+    </aside>
+
+    <!-- Main Container -->
+    <div class="app-main">
+        <!-- Top Navbar -->
+        <header class="top-navbar">
+            <div class="navbar-left">
+                <button class="mobile-toggle-btn" id="mobileMenuToggle" aria-label="Toggle Menu">☰</button>
+                <div class="page-breadcrumb">
+                    {% block breadcrumb %}
+                        <span>{{ current_society.name if current_society else "Society Portal" }}</span> / <strong>Dashboard</strong>
+                    {% endblock %}
+                </div>
+            </div>
+
+            <div class="navbar-right">
+                <!-- Live Real-Time Clock -->
+                <div class="live-clock-badge">
+                    <span class="dot"></span>
+                    <span id="liveDate">--</span>
+                    <span style="opacity: 0.4;">|</span>
+                    <span id="liveTime">--:--</span>
+                </div>
+
+                {% if current_user.is_authenticated %}
+                <!-- Notification Bell -->
+                <a href="{{ url_for('notifications.index') }}" class="topbar-icon-btn" title="Notifications" id="notifBellBtn">
+                    <span style="font-size: 16px;">🔔</span>
+                    {% if unread_notif_count > 0 %}
+                        <span class="topbar-badge">{{ unread_notif_count }}</span>
+                    {% endif %}
+                </a>
+
+                <!-- Theme Toggle Button -->
+                <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle theme mode" aria-pressed="false" title="Switch Theme">
+                    <span class="theme-icon-dark">🌙</span>
+                    <span class="theme-icon-light" style="display: none;">☀️</span>
+                </button>
+
+                <!-- User Dropdown Menu -->
+                <div class="user-menu-dropdown-wrapper">
+                    <button class="user-profile-button" id="userMenuToggle" type="button" aria-expanded="false">
+                        <div class="user-avatar">{{ current_user.full_name[:1] | upper }}</div>
+                        <span class="user-display-name">{{ current_user.full_name }}</span>
+                        <span style="font-size: 10px; color: var(--text-muted); margin-left: 2px;">▼</span>
+                    </button>
+                    <div class="user-dropdown-menu" id="userDropdownMenu">
+                        <div class="dropdown-header">
+                            <div style="font-weight: 600; color: white;">{{ current_user.full_name }}</div>
+                            <div style="font-size: 11px; color: var(--text-muted); text-transform: capitalize;">{{ current_user.role }} • {{ current_user.email }}</div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        {% if current_user.role == 'member' %}
+                            <a href="{{ url_for('member.profile') }}" class="dropdown-item">
+                                <span>👤</span> My Profile
+                            </a>
+                        {% else %}
+                            <a href="{{ url_for('society_settings') }}" class="dropdown-item">
+                                <span>⚙</span> Society Settings
+                            </a>
+                        {% endif %}
+                        <a href="{{ url_for('auth.change_password') }}" class="dropdown-item">
+                            <span>🔑</span> Change Password
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <form method="POST" action="{{ url_for('auth.logout') }}" style="margin: 0; padding: 0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="dropdown-item dropdown-logout-btn" style="width: 100%; text-align: left; background: none; border: none; cursor: pointer;">
+                                <span>⇥</span> Sign Out
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-sm">Login</a>
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- Body Content -->
+        <main class="content-body">
+            <!-- Flash Notification Alerts -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-container">
+                        {% for category, message in messages %}
+                            <div class="flash-alert {{ category if category else 'info' }}">
+                                <span>{{ message }}</span>
+                                <button class="flash-close-btn" onclick="this.parentElement.remove();">&times;</button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+</div>
+
+<!-- Master Client JavaScript -->
+<script>
+// Mobile Sidebar Toggle
+const toggleBtn = document.getElementById('mobileMenuToggle');
+const sidebar = document.getElementById('appSidebar');
+if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('mobile-open');
+    });
+    
+    // Close sidebar on click outside on mobile
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 900 && !sidebar.contains(e.target) && e.target !== toggleBtn) {
+            sidebar.classList.remove('mobile-open');
+        }
+    });
+}
+
+// User Menu Dropdown Toggle
+const userMenuToggle = document.getElementById('userMenuToggle');
+const userDropdownMenu = document.getElementById('userDropdownMenu');
+if (userMenuToggle && userDropdownMenu) {
+    userMenuToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        userDropdownMenu.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!userDropdownMenu.contains(e.target) && e.target !== userMenuToggle) {
+            userDropdownMenu.classList.remove('show');
+        }
+    });
+}
+
+// Live Real-Time Clock
+function updateClock() {
+    const dateEl = document.getElementById('liveDate');
+    const timeEl = document.getElementById('liveTime');
+    if (!dateEl || !timeEl) return;
+
+    const now = new Date();
+    dateEl.innerText = now.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+    timeEl.innerText = now.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// Disable Form Buttons on Submit to Prevent Double Operations
+document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function() {
+        const btn = this.querySelector('button[type="submit"]');
+        if (btn) {
+            btn.dataset.originalText = btn.innerHTML;
+            btn.innerHTML = '<span>Processing...</span>';
+            btn.disabled = true;
+            setTimeout(() => {
+                btn.disabled = false;
+                if (btn.dataset.originalText) btn.innerHTML = btn.dataset.originalText;
+            }, 6000);
+        }
+    });
+});
+
+// Auto-dismiss Flash Alerts after 5 seconds
+setTimeout(() => {
+    document.querySelectorAll('.flash-alert').forEach(alert => {
+        alert.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        alert.style.opacity = '0';
+        alert.style.transform = 'translateY(-6px)';
+        setTimeout(() => alert.remove(), 400);
+    });
+}, 5000);
+
+// Automatically attach CSRF token to AJAX fetch requests
+const _nativeFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+    options = options || {};
+    options.headers = options.headers || {};
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (csrfToken && !options.headers['X-CSRFToken'] && !options.headers['X-CSRF-Token']) {
+        if (options.headers instanceof Headers) {
+            options.headers.append('X-CSRFToken', csrfToken);
+        } else {
+            options.headers['X-CSRFToken'] = csrfToken;
+        }
+    }
+    return _nativeFetch(url, options);
+};
+
+// Theme Toggle Logic
+function initThemeToggle() {
+    const toggleBtns = document.querySelectorAll('.theme-toggle-btn');
+    function updateThemeUI(theme) {
+        toggleBtns.forEach(btn => {
+            const isDark = theme === 'dark';
+            btn.setAttribute('aria-pressed', isDark ? 'false' : 'true');
+            const darkIcon = btn.querySelector('.theme-icon-dark');
+            const lightIcon = btn.querySelector('.theme-icon-light');
+            if (darkIcon && lightIcon) {
+                darkIcon.style.display = isDark ? 'inline' : 'none';
+                lightIcon.style.display = isDark ? 'none' : 'inline';
+            }
+        });
+    }
+
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    updateThemeUI(currentTheme);
+
+    toggleBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const activeTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            const nextTheme = activeTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', nextTheme);
+            localStorage.setItem('theme', nextTheme);
+            updateThemeUI(nextTheme);
+        });
+    });
+}
+initThemeToggle();
+</script>
+
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

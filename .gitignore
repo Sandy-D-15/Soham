@@ -1,0 +1,29 @@
+# Virtual Environment
+.venv/
+env/
+venv/
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Database backups & local files
+database/*.bak*
+*.db.bak*
+desktop.ini
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# User uploads (keep directory structure)
+uploads/*
+!uploads/.gitkeep
+!uploads/complaints/.gitkeep
+!uploads/logos/.gitkeep
+

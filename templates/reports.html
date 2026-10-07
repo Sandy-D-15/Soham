@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Financial & Maintenance Reports | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Auditing</span> / <strong>Reports & Analytics</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Reports & Financial Statements</h1>
+        <p>Real-time analytics on maintenance collections, outstanding dues, income vs expenses, and defaulters.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="window.print()">
+            🖨️ Print / Save PDF
+        </button>
+    </div>
+</div>
+
+<!-- Financial Summary Cards -->
+<div class="stats-grid" style="margin-bottom: 28px;">
+    <div class="stat-card">
+        <div class="stat-card-label">Total Maintenance Billed</div>
+        <div class="stat-card-value">₹{{ "%.2f"|format(total_billed) }}</div>
+        <div class="stat-card-desc">Across all generated bills</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Total Maintenance Collected</div>
+        <div class="stat-card-value" style="color: #34d399;">
+            ₹{{ "%.2f"|format(total_collected) }}
+        </div>
+        <div class="stat-card-desc">Paid by residents</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Outstanding Dues</div>
+        <div class="stat-card-value" style="color: #f87171;">
+            ₹{{ "%.2f"|format(total_outstanding) }}
+        </div>
+        <div class="stat-card-desc">Overdue / pending payment</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Collection Efficiency</div>
+        <div class="stat-card-value" style="color: #a5b4fc;">
+            {{ "%.1f"|format(collection_rate) }}%
+        </div>
+        <div class="stat-card-desc">Collected vs Billed ratio</div>
+    </div>
+</div>
+
+<!-- Income vs Expense Summary -->
+<div class="glass-card" style="margin-bottom: 28px;">
+    <div class="glass-card-header">
+        <h3>Society Operational Cash Flow Summary</h3>
+        <span class="badge badge-info">Accounting Health</span>
+    </div>
+    <div class="glass-card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 12px; padding: 20px;">
+                <div style="font-size: 13px; color: #a7f3d0; margin-bottom: 4px;">Total Ledger Inflow (Credits)</div>
+                <div style="font-size: 26px; font-weight: 700; color: #34d399;">+₹{{ "%.2f"|format(total_ledger_credits) }}</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Maintenance & income deposits</div>
+            </div>
+            <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 12px; padding: 20px;">
+                <div style="font-size: 13px; color: #fecaca; margin-bottom: 4px;">Total Ledger Outflow (Debits)</div>
+                <div style="font-size: 26px; font-weight: 700; color: #f87171;">−₹{{ "%.2f"|format(total_ledger_debits) }}</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Disbursed expenses & staff salaries</div>
+            </div>
+            <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 12px; padding: 20px;">
+                <div style="font-size: 13px; color: #c7d2fe; margin-bottom: 4px;">Total Society Bank & Cash Balance</div>
+                <div style="font-size: 26px; font-weight: 700; color: #818cf8;">₹{{ "%.2f"|format(total_liquid_balance) }}</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Reconciled across liquid accounts</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Defaulters List Table -->
+<div class="glass-card" style="margin-bottom: 28px;">
+    <div class="glass-card-header">
+        <div>
+            <h3>Maintenance Dues & Defaulters List</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Flats with pending or overdue maintenance charges</span>
+        </div>
+        <span class="badge badge-danger">{{ defaulters|length }} Overdue Flats</span>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if defaulters %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Flat No</th>
+                            <th>Wing / Building</th>
+                            <th>Resident / Owner</th>
+                            <th>Contact Phone</th>
+                            <th>Pending Bills</th>
+                            <th style="text-align: right;">Total Overdue (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in defaulters %}
+                            <tr>
+                                <td><strong style="color: white; font-size: 15px;">{{ d.flat_number }}</strong></td>
+                                <td>{{ d.building_wing }}</td>
+                                <td>{{ d.resident_name }}</td>
+                                <td>{{ d.phone }}</td>
+                                <td><span class="badge badge-warning">{{ d.unpaid_bills_count }} Unpaid</span></td>
+                                <td style="text-align: right;">
+                                    <strong style="color: #f87171; font-size: 15px;">₹{{ "%.2f"|format(d.total_due) }}</strong>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">🎉</div>
+                <h3>Zero Defaulters</h3>
+                <p>All flats have fully cleared their maintenance dues! Outstanding collection balance is ₹0.00.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Expense Breakdown by Category -->
+<div class="glass-card">
+    <div class="glass-card-header">
+        <h3>Disbursed Expenses by Category</h3>
+        <span class="badge badge-neutral">{{ category_expenses|length }} Categories</span>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if category_expenses %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Category</th>
+                            <th>Vouchers Paid</th>
+                            <th style="text-align: right;">Total Disbursed (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in category_expenses %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td><strong style="color: white;">{{ item.name }}</strong></td>
+                                <td>{{ item.count }} vouchers</td>
+                                <td style="text-align: right;">
+                                    <strong style="color: white;">₹{{ "%.2f"|format(item.total) }}</strong>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <h3>No Expense History</h3>
+                <p>No expenses have been recorded or disbursed yet.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

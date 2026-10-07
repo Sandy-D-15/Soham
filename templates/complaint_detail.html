@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket #{{ complaint.id }} | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Support</span> / <a href="{{ url_for('complaints.index') }}">Complaints</a> / <strong>Ticket #{{ complaint.id }}</strong>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <a href="{{ url_for('complaints.index') }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+        ← Back to Complaints
+    </a>
+</div>
+
+<!-- Header Card: Room Number & Ticket Overview -->
+<div class="glass-card" style="margin-bottom: 24px; padding: 24px;">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <span class="badge badge-neutral" style="font-family: monospace; font-size: 13px;">#{{ complaint.id }}</span>
+                
+                <!-- Central Room Number Display -->
+                {% if complaint.flat %}
+                    <span class="badge badge-indigo" style="font-size: 16px; font-weight: 700; padding: 6px 14px; letter-spacing: 0.5px;">
+                        🏠 Room: {% if complaint.flat.floor and complaint.flat.floor.wing %}{{ complaint.flat.floor.wing.name }}-{{ complaint.flat.flat_number }}{% else %}Flat {{ complaint.flat.flat_number }}{% endif %}
+                    </span>
+                {% else %}
+                    <span class="badge badge-neutral" style="font-size: 14px; padding: 6px 12px;">Common Area</span>
+                {% endif %}
+
+                <span class="badge {% if complaint.priority == 'Emergency' or complaint.priority == 'High' %}badge-danger{% elif complaint.priority == 'Medium' %}badge-warning{% else %}badge-neutral{% endif %}" style="font-size: 13px;">
+                    {{ complaint.priority }} Priority
+                </span>
+                
+                {% if complaint.status in ['Resolved', 'Closed'] %}
+                    <span class="badge badge-success" style="font-size: 13px;">✓ {{ complaint.status }}</span>
+                {% elif complaint.status == 'In Progress' %}
+                    <span class="badge badge-warning" style="font-size: 13px;">⚡ In Progress</span>
+                {% else %}
+                    <span class="badge badge-danger" style="font-size: 13px;">● Open</span>
+                {% endif %}
+            </div>
+            
+            <h1 style="font-size: 22px; font-weight: 700; color: #ffffff; margin: 0 0 6px 0;">
+                {{ complaint.title }}
+            </h1>
+            <div style="font-size: 13px; color: var(--text-muted);">
+                Logged on {{ complaint.created_at.strftime('%d %b %Y at %I:%M %p') }}
+                {% if complaint.category %}
+                    • <span class="badge badge-indigo" style="font-size: 11px; padding: 2px 6px;">{{ complaint.category }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Resident Snapshot (Top Right) -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 18px; min-width: 220px;">
+            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 4px;">Reported By</div>
+            <div style="font-weight: 600; color: #f8fafc; font-size: 14px;">{{ complaint.member.full_name if complaint.member else 'Unknown Resident' }}</div>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px; font-family: monospace;">
+                📞 {{ complaint.member.phone_number or 'No phone registered' }}
+            </div>
+            {% if complaint.member and complaint.member.email %}
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    ✉ {{ complaint.member.email }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Two-Column Layout -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <!-- LEFT: Details, Attachment, Resolution, Timeline & Commenting -->
+    <div>
+        <!-- Issue Description Card -->
+        <div class="glass-card" style="margin-bottom: 24px;">
+            <div class="glass-card-header">
+                <h3>Issue Description</h3>
+            </div>
+            <div class="glass-card-body">
+                <p style="white-space: pre-wrap; color: #e2e8f0; line-height: 1.6; margin: 0; font-size: 14px;">
+                    {{ complaint.description }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Attachment Card (If uploaded) -->
+        {% if complaint.attachment_path %}
+            <div class="glass-card" style="margin-bottom: 24px;">
+                <div class="glass-card-header">
+                    <h3>Attached Evidence / Photo</h3>
+                </div>
+                <div class="glass-card-body">
+                    {% if complaint.attachment_path.lower().endswith('.pdf') %}
+                        <div style="display: flex; align-items: center; gap: 14px; padding: 12px; background: rgba(255, 255, 255, 0.04); border-radius: 8px;">
+                            <div style="font-size: 32px;">📄</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #ffffff;">PDF Document Attached</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">{{ complaint.attachment_path }}</div>
+                            </div>
+                            <a href="{{ url_for('complaints.download_attachment', filename=complaint.attachment_path) }}" target="_blank" class="btn btn-secondary btn-sm">
+                                📥 Download PDF
+                            </a>
+                        </div>
+                    {% else %}
+                        <div style="text-align: center;">
+                            <a href="{{ url_for('complaints.download_attachment', filename=complaint.attachment_path) }}" target="_blank">
+                                <img src="{{ url_for('complaints.download_attachment', filename=complaint.attachment_path) }}" alt="Complaint Attachment" style="max-width: 100%; max-height: 380px; border-radius: 8px; border: 1px solid var(--border-color); object-fit: contain;">
+                            </a>
+                            <div style="margin-top: 10px;">
+                                <a href="{{ url_for('complaints.download_attachment', filename=complaint.attachment_path) }}" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 12px;">
+                                    🔍 View Full Size Image
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Resolution Box (If resolved/closed) -->
+        {% if complaint.status in ['Resolved', 'Closed'] and complaint.resolution_notes %}
+            <div class="glass-card" style="margin-bottom: 24px; border-color: rgba(52, 211, 153, 0.3); background: rgba(16, 185, 129, 0.05);">
+                <div class="glass-card-header" style="border-bottom-color: rgba(52, 211, 153, 0.2);">
+                    <h3 style="color: #34d399; display: flex; align-items: center; gap: 8px;">
+                        <span>✓</span> Resolution Details
+                    </h3>
+                    {% if complaint.resolved_at %}
+                        <span style="font-size: 12px; color: #34d399;">
+                            Resolved on {{ complaint.resolved_at.strftime('%d %b %Y, %I:%M %p') }}
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="glass-card-body">
+                    <div style="color: #f1f5f9; line-height: 1.6; font-size: 14px; white-space: pre-wrap;">
+                        {{ complaint.resolution_notes }}
+                    </div>
+                    {% if complaint.resolver %}
+                        <div style="margin-top: 12px; font-size: 12px; color: var(--text-muted);">
+                            Resolved by: <strong style="color: #e2e8f0;">{{ complaint.resolver.full_name }}</strong>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Activity Timeline -->
+        <div class="glass-card" style="margin-bottom: 24px;">
+            <div class="glass-card-header">
+                <h3>Activity & Communication Timeline</h3>
+                <span class="badge badge-neutral">{{ timeline|length }} Events</span>
+            </div>
+            <div class="glass-card-body">
+                {% if timeline %}
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        {% for item in timeline %}
+                            {% if item.type == 'history' %}
+                                <!-- Status change / system event -->
+                                <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; background: rgba(255, 255, 255, 0.02); border-left: 3px solid var(--indigo-500); border-radius: 0 6px 6px 0;">
+                                    <div style="font-size: 18px; line-height: 1;">⚡</div>
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <strong style="color: #ffffff; font-size: 13px;">{{ item.actor }}</strong>
+                                            <span style="font-size: 11px; color: var(--text-muted);">{{ item.time.strftime('%d %b %Y, %I:%M %p') }}</span>
+                                        </div>
+                                        <div style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">
+                                            {{ item.note }}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% elif item.type == 'comment' %}
+                                <!-- User comment -->
+                                <div style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 6px; {% if item.is_internal %}background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b;{% else %}background: rgba(255, 255, 255, 0.04); border-left: 3px solid #3b82f6;{% endif %}">
+                                    <div style="font-size: 18px; line-height: 1;">{% if item.is_internal %}🔒{% else %}💬{% endif %}</div>
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <strong style="color: #ffffff; font-size: 13px;">{{ item.actor }}</strong>
+                                                {% if item.is_internal %}
+                                                    <span class="badge badge-warning" style="font-size: 10px; padding: 2px 6px;">Internal Note (Staff Only)</span>
+                                                {% endif %}
+                                            </div>
+                                            <span style="font-size: 11px; color: var(--text-muted);">{{ item.time.strftime('%d %b %Y, %I:%M %p') }}</span>
+                                        </div>
+                                        <div style="font-size: 13px; color: #f1f5f9; line-height: 1.5; white-space: pre-wrap;">
+                                            {{ item.comment }}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p style="color: var(--text-muted); font-size: 13px; margin: 0;">No comments or history recorded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Add Comment Form -->
+        <div class="glass-card">
+            <div class="glass-card-header">
+                <h3>Add a Response or Comment</h3>
+            </div>
+            <div class="glass-card-body">
+                <form method="POST" action="{{ url_for('complaints.add_comment', complaint_id=complaint.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="form-group" style="margin-bottom: 14px;">
+                        <textarea name="comment" class="form-control" rows="3" placeholder="Type your comment, update, or inquiry here..." required></textarea>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        {% if current_user.role == 'secretary' %}
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #fbbf24; cursor: pointer;">
+                                <input type="checkbox" name="is_internal" value="1">
+                                <span>🔒 Internal Note (Only visible to committee & staff, hidden from resident)</span>
+                            </label>
+                        {% else %}
+                            <div></div>
+                        {% endif %}
+
+                        <button type="submit" class="btn btn-primary" style="padding: 8px 20px;">
+                            ✉ Post Response
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Management Panel & Metadata -->
+    <div>
+        {% if current_user.role == 'secretary' %}
+            <!-- Management Action Card -->
+            <div class="glass-card" style="margin-bottom: 24px;">
+                <div class="glass-card-header">
+                    <h3>Ticket Action Panel</h3>
+                    <span class="badge badge-indigo">Admin Controls</span>
+                </div>
+                <div class="glass-card-body">
+                    <form method="POST" action="{{ url_for('complaints.update_complaint', complaint_id=complaint.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label class="form-label">Ticket Status *</label>
+                            <select name="status" id="ticketStatusSelect" class="form-control" required onchange="toggleResolutionRequired(this.value)">
+                                <option value="Open" {% if complaint.status == 'Open' %}selected{% endif %}>Open</option>
+                                <option value="In Progress" {% if complaint.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                                <option value="Resolved" {% if complaint.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                                <option value="Closed" {% if complaint.status == 'Closed' %}selected{% endif %}>Closed</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label class="form-label">Assign Technician / Staff / Vendor</label>
+                            <input type="text" name="assigned_name" value="{{ complaint.assigned_name or '' }}" list="techniciansList" class="form-control" placeholder="Select or type technician name...">
+                            <datalist id="techniciansList">
+                                {% for s in staff_list %}
+                                    <option value="{{ s.full_name }} (Staff - {{ s.role }})"></option>
+                                {% endfor %}
+                                {% for v in vendor_list %}
+                                    <option value="{{ v.vendor_name }} (Vendor - {{ v.service_type }})"></option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 18px;">
+                            <label class="form-label">
+                                Resolution Notes
+                                <span id="resNotesRequiredLabel" style="color: #f87171; font-size: 11px; display: {% if complaint.status in ['Resolved', 'Closed'] %}inline{% else %}none{% endif %};">*(Required to resolve - min 5 chars)</span>
+                            </label>
+                            <textarea name="resolution_notes" id="resolutionNotesArea" class="form-control" rows="3" placeholder="Explain the diagnosis, repair completed, or reason for resolution...">{{ complaint.resolution_notes or '' }}</textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            💾 Update Ticket Status
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Property & Resident Details Card -->
+        <div class="glass-card" style="margin-bottom: 24px;">
+            <div class="glass-card-header">
+                <h3>Property Information</h3>
+            </div>
+            <div class="glass-card-body" style="font-size: 13px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                    <span style="color: var(--text-muted);">Room / Flat</span>
+                    <strong style="color: #ffffff;">
+                        {% if complaint.flat %}
+                            {% if complaint.flat.floor and complaint.flat.floor.wing %}
+                                {{ complaint.flat.floor.wing.name }}-{{ complaint.flat.flat_number }}
+                            {% else %}
+                                {{ complaint.flat.flat_number }}
+                            {% endif %}
+                        {% else %}
+                            Common Area
+                        {% endif %}
+                    </strong>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                    <span style="color: var(--text-muted);">Floor</span>
+                    <span style="color: #e2e8f0;">{{ complaint.flat.floor.floor_number if (complaint.flat and complaint.flat.floor) else '—' }}</span>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                    <span style="color: var(--text-muted);">Wing</span>
+                    <span style="color: #e2e8f0;">{{ complaint.flat.floor.wing.name if (complaint.flat and complaint.flat.floor and complaint.flat.floor.wing) else '—' }}</span>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                    <span style="color: var(--text-muted);">Resident Name</span>
+                    <strong style="color: #ffffff;">{{ complaint.member.full_name if complaint.member else '—' }}</strong>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="color: var(--text-muted);">Contact Phone</span>
+                    <span style="color: #e2e8f0; font-family: monospace;">{{ complaint.member.phone_number or '—' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ticket Metadata Card -->
+        <div class="glass-card">
+            <div class="glass-card-header">
+                <h3>Ticket Details</h3>
+            </div>
+            <div class="glass-card-body" style="font-size: 13px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: var(--text-muted);">Ticket ID</span>
+                    <span style="font-family: monospace; color: #e2e8f0;">#{{ complaint.id }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: var(--text-muted);">Category</span>
+                    <span style="color: #e2e8f0;">{{ complaint.category }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: var(--text-muted);">Priority</span>
+                    <span style="color: #e2e8f0;">{{ complaint.priority }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: var(--text-muted);">Current Status</span>
+                    <span style="color: #e2e8f0;">{{ complaint.status }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: var(--text-muted);">Assigned To</span>
+                    <span style="color: #e2e8f0;">{{ complaint.assigned_name or 'Unassigned' }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-muted);">Created At</span>
+                    <span style="color: #e2e8f0;">{{ complaint.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleResolutionRequired(status) {
+    const label = document.getElementById('resNotesRequiredLabel');
+    const textarea = document.getElementById('resolutionNotesArea');
+    if (status === 'Resolved' || status === 'Closed') {
+        if (label) label.style.display = 'inline';
+        if (textarea) textarea.required = true;
+    } else {
+        if (label) label.style.display = 'none';
+        if (textarea) textarea.required = false;
+    }
+}
+</script>
+{% endblock %}

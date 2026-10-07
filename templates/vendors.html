@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Vendors & Contractors | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Management</span> / <strong>Vendors & Contractors</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Society Vendors & Service Providers</h1>
+        <p>Maintain verified service contractors, AMC providers, utility suppliers, and maintenance technicians.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('expenses') }}" class="btn btn-secondary">
+            📑 Society Expenses →
+        </a>
+    </div>
+</div>
+
+<!-- Vendor Overview Cards -->
+<div class="stats-grid" style="margin-bottom: 28px;">
+    <div class="stat-card">
+        <div class="stat-card-label">Total Vendors</div>
+        <div class="stat-card-value">{{ vendors|length }}</div>
+        <div class="stat-card-desc">Contractors & suppliers</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Active Vendors</div>
+        <div class="stat-card-value" style="color: #34d399;">
+            {{ vendors|selectattr("status", "equalto", true)|list|length }}
+        </div>
+        <div class="stat-card-desc">Eligible for expense recording</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Inactive / Archived</div>
+        <div class="stat-card-value" style="color: var(--text-muted);">
+            {{ vendors|selectattr("status", "equalto", false)|list|length }}
+        </div>
+        <div class="stat-card-desc">Past or terminated contracts</div>
+    </div>
+</div>
+
+<!-- Add Vendor Form -->
+<div class="glass-card" style="margin-bottom: 28px;">
+    <div class="glass-card-header">
+        <h3>Add New Vendor / Contractor</h3>
+        <span class="badge badge-info">Service Profile</span>
+    </div>
+    <div class="glass-card-body">
+        <form method="POST" action="{{ url_for('add_vendor') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                <div class="form-group">
+                    <label class="form-label">Vendor / Company Name *</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Otis Elevators Pvt Ltd" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Service Type / Specialty *</label>
+                    <input type="text" name="service_type" class="form-control" placeholder="e.g. Elevator AMC, DG Maintenance, Security" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contact Person</label>
+                    <input type="text" name="contact_person" class="form-control" placeholder="Representative Name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Primary Phone *</label>
+                    <input type="text" name="phone" class="form-control" placeholder="Mobile / Telephone" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" name="email" class="form-control" placeholder="vendor@example.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">GSTIN Number</label>
+                    <input type="text" name="gst_number" class="form-control" placeholder="Optional 15-character GSTIN">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">PAN Number</label>
+                    <input type="text" name="pan_number" class="form-control" placeholder="Optional PAN">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Office Address</label>
+                    <input type="text" name="address" class="form-control" placeholder="City / Area address">
+                </div>
+            </div>
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">
+                    <span>＋</span> Register Vendor
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Vendors Table -->
+<div class="glass-card">
+    <div class="glass-card-header">
+        <h3>Registered Vendors & Service Partners</h3>
+        <span class="badge badge-neutral">{{ vendors|length }} Records</span>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if vendors %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Company / Provider</th>
+                            <th>Service Category</th>
+                            <th>Contact Person</th>
+                            <th>Phone & Email</th>
+                            <th>Tax IDs (GST / PAN)</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in vendors %}
+                            <tr>
+                                <td><span class="badge badge-neutral">#{{ v.id }}</span></td>
+                                <td>
+                                    <strong style="color: white; font-size: 14px;">{{ v.name }}</strong>
+                                    {% if v.address %}
+                                        <div style="font-size: 11px; color: var(--text-muted);">{{ v.address }}</div>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge badge-indigo">{{ v.service_type }}</span></td>
+                                <td>{{ v.contact_person or '—' }}</td>
+                                <td>
+                                    <div>{{ v.phone }}</div>
+                                    {% if v.email %}
+                                        <div style="font-size: 11px; color: var(--text-muted);">{{ v.email }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if v.gst_number %}<div>GST: {{ v.gst_number }}</div>{% endif %}
+                                    {% if v.pan_number %}<div style="font-size: 11px; color: var(--text-muted);">PAN: {{ v.pan_number }}</div>{% endif %}
+                                    {% if not v.gst_number and not v.pan_number %}—{% endif %}
+                                </td>
+                                <td>
+                                    {% if v.status %}
+                                        <span class="badge badge-success">Active</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: right;">
+                                    <form method="POST" action="{{ url_for('toggle_vendor_status', vendor_id=v.id) }}" style="display: inline-block;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn {% if v.status %}btn-danger{% else %}btn-success{% endif %} btn-sm">
+                                            {% if v.status %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">🏢</div>
+                <h3>No Vendors Registered</h3>
+                <p>Register your service contractors and suppliers to link them directly when booking society expenses.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

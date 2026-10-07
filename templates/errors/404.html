@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 Page Not Found | {{ current_society.name if current_society else "Society Management" }}</title>
+    <style>
+        :root {
+            --bg-base: #0b0f19;
+            --surface: rgba(17, 24, 39, 0.85);
+            --border: rgba(255, 255, 255, 0.1);
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --warning: #f59e0b;
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Segoe UI", system-ui, sans-serif; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at top, #1e1b4b 0%, var(--bg-base) 70%);
+            color: var(--text-main);
+            padding: 20px;
+        }
+        .error-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 48px;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .code-badge {
+            display: inline-block;
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+        h1 { font-size: 26px; font-weight: 700; margin-bottom: 12px; }
+        p { color: var(--text-muted); font-size: 15px; line-height: 1.6; margin-bottom: 28px; }
+        .action-btn {
+            display: inline-block;
+            background: var(--primary);
+            color: #fff;
+            padding: 12px 28px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.2s ease;
+        }
+        .action-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <div class="code-badge">404 NOT FOUND</div>
+        <h1>Page Not Found</h1>
+        <p>The requested page or resource could not be found on this society portal.</p>
+        <a href="{{ url_for('dashboard') }}" class="action-btn">Return to Dashboard</a>
+    </div>
+</body>
+</html>

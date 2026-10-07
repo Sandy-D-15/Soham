@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Society Profile Settings | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Society Management</span> / <strong>Society Profile</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Society Profile & Configuration</h1>
+        <p>Set official legal identity, society logo, contact credentials, and registered address for maintenance bills and receipts.</p>
+    </div>
+</div>
+
+<div class="glass-card" style="max-width: 860px; margin: 0 auto;">
+    <div class="glass-card-header">
+        <h3>Official Society Information & Branding</h3>
+        <span class="badge badge-info">Registration</span>
+    </div>
+    <div class="glass-card-body">
+        <form method="POST" action="{{ url_for('society_settings') }}" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Society Logo Section -->
+            <div style="display: flex; align-items: center; gap: 20px; padding: 18px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 24px;">
+                <div style="width: 72px; height: 72px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border-color); flex-shrink: 0;">
+                    {% if society and society.logo_filename %}
+                        <img src="{{ url_for('society_logo', filename=society.logo_filename) }}" alt="Society Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                    {% else %}
+                        <span style="font-size: 28px; color: var(--text-muted);">🏛️</span>
+                    {% endif %}
+                </div>
+                <div style="flex: 1;">
+                    <label class="form-label" style="margin-bottom: 4px;">Society Emblem / Logo</label>
+                    <input type="file" name="logo" accept=".png,.jpg,.jpeg,.svg,.webp" class="form-control" style="padding: 6px 12px; font-size: 13px;">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                        Supported formats: PNG, JPG, JPEG, SVG, WEBP. Maximum file size: 2MB. Appears in navigation headers, bills, and payment receipts.
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">Society Legal Name *</label>
+                    <input type="text" name="name" class="form-control" value="{{ society.name if society else '' }}" placeholder="Example: Royal Palms Co-operative Housing Society Ltd." required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Registration / Society Number *</label>
+                    <input type="text" name="registration_number" class="form-control" value="{{ society.registration_number if society else '' }}" placeholder="Example: BOM/HSG/12345/2026" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Contact Phone / Mobile *</label>
+                    <input type="text" name="phone" class="form-control" value="{{ society.phone if society else '' }}" placeholder="Example: +91 98765 43210" required>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">Official Communication Email *</label>
+                    <input type="email" name="official_email" class="form-control" value="{{ society.official_email if society else '' }}" placeholder="Example: office@royalpalms.org" required>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">Premises Address *</label>
+                    <textarea name="address" class="form-control" rows="3" placeholder="Plot No, Street, Landmark" required>{{ society.address if society else '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">City *</label>
+                    <input type="text" name="city" class="form-control" value="{{ society.city if society else '' }}" placeholder="Example: Mumbai" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">State *</label>
+                    <input type="text" name="state" class="form-control" value="{{ society.state if society else '' }}" placeholder="Example: Maharashtra" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Pincode *</label>
+                    <input type="text" name="pincode" class="form-control" value="{{ society.pincode if society else '' }}" placeholder="Example: 400001" required>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-subtle); padding-top: 20px;">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Society Profile</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Expense Categories | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <a href="{{ url_for('expenses') }}">Expenses</a> / <strong>Categories</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Society Expense Categories</h1>
+        <p>Classify and categorize society operational, capital, utility, and maintenance expenditures.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('expenses') }}" class="btn btn-secondary">
+            ← Back to Expenses
+        </a>
+    </div>
+</div>
+
+<!-- Category Stats Cards -->
+<div class="stats-grid" style="margin-bottom: 28px;">
+    <div class="stat-card">
+        <div class="stat-card-label">Total Categories</div>
+        <div class="stat-card-value">{{ categories|length }}</div>
+        <div class="stat-card-desc">All configured expense heads</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Active Categories</div>
+        <div class="stat-card-value" style="color: #34d399;">
+            {{ categories|selectattr("status", "equalto", true)|list|length }}
+        </div>
+        <div class="stat-card-desc">Available for expense booking</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Inactive Categories</div>
+        <div class="stat-card-value" style="color: var(--text-muted);">
+            {{ categories|selectattr("status", "equalto", false)|list|length }}
+        </div>
+        <div class="stat-card-desc">Archived / disabled heads</div>
+    </div>
+</div>
+
+<!-- Add Category Form -->
+<div class="glass-card" style="margin-bottom: 28px;">
+    <div class="glass-card-header">
+        <h3>Add New Expense Category</h3>
+        <span class="badge badge-info">Accounting Head</span>
+    </div>
+    <div class="glass-card-body">
+        <form method="POST" action="{{ url_for('add_expense_category') }}" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 16px; align-items: flex-end;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label class="form-label">Category Name *</label>
+                <input type="text" name="name" class="form-control" maxlength="120" placeholder="e.g. Lift AMC, Water Tank Cleaning" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <input type="text" name="description" class="form-control" maxlength="255" placeholder="Optional details about this expense head">
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                    + Create Category
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Category Grid / Table -->
+<div class="glass-card">
+    <div class="glass-card-header">
+        <h3>Configured Categories</h3>
+        <span class="badge badge-indigo">{{ categories|length }} Categories</span>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if categories %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Category Name</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                            <tr>
+                                <td style="color: var(--text-muted);">{{ loop.index }}</td>
+                                <td style="font-weight: 600; color: #fff;">{{ category.name }}</td>
+                                <td style="color: var(--text-secondary);">
+                                    {{ category.description or '—' }}
+                                </td>
+                                <td>
+                                    {% if category.status %}
+                                        <span class="badge badge-success">Active</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: right;">
+                                    <form method="POST" action="{{ url_for('toggle_expense_category', category_id=category.id) }}" style="display: inline-block;"
+                                          {% if category.status %}onsubmit="return confirm('Are you sure you want to deactivate this category? It will no longer appear when recording new expenses.');"{% endif %}>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn {% if category.status %}btn-danger{% else %}btn-success{% endif %} btn-sm">
+                                            {% if category.status %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 48px; color: var(--text-muted);">
+                <div style="font-size: 36px; margin-bottom: 12px; opacity: 0.5;">🏷️</div>
+                <h4 style="color: #fff; margin-bottom: 6px;">No Expense Categories Found</h4>
+                <p>Add your first category above to begin recording society expenses.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

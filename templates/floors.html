@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Floors - Wing {{ wing.name }} | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Society Management</span> / <a href="{{ url_for('buildings') }}">Buildings</a> / <a href="{{ url_for('wings', building_id=building.id) }}">{{ building.name }}</a> / <strong>Wing {{ wing.name }} Floors</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <div style="margin-bottom: 4px;">
+            <a href="{{ url_for('wings', building_id=building.id) }}" class="btn btn-secondary btn-sm">← Back to {{ building.name }} Wings</a>
+        </div>
+        <h1>Floor Management — Wing {{ wing.name }}</h1>
+        <p>{{ building.name }} &gt; Wing {{ wing.name }} floor layout configuration.</p>
+    </div>
+    <div class="badge badge-info" style="font-size: 13px; padding: 6px 14px;">
+        {{ floors|length }} Floors Registered
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 24px; align-items: start;">
+    <!-- Add Floor Card -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Add Floor to Wing {{ wing.name }}</h3>
+            <span class="badge badge-neutral">Level</span>
+        </div>
+        <div class="glass-card-body">
+            <form method="POST" action="{{ url_for('floors', wing_id=wing.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">Floor Number *</label>
+                    <input type="number" name="floor_number" class="form-control" placeholder="0 for Ground, 1 for 1st Floor..." required>
+                    <span style="font-size: 11px; color: var(--text-muted);">Use 0 for Ground Floor, -1 for Basement</span>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <span>＋</span> Save Floor
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Floors List Card -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Registered Floors</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Configure flats per floor</span>
+        </div>
+        <div class="glass-card-body" style="padding: 0;">
+            {% if floors %}
+                <div class="table-container" style="border: none; border-radius: 0;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Floor Level</th>
+                                <th>Flats Count</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in floors %}
+                                <tr>
+                                    <td><span class="badge badge-neutral">#{{ f.id }}</span></td>
+                                    <td>
+                                        <strong style="font-size: 14px; color: white;">
+                                            {% if f.floor_number == 0 %}Ground Floor{% else %}Floor {{ f.floor_number }}{% endif %}
+                                        </strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">{{ f.flats|length }} Flats</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('flats', floor_id=f.id) }}" class="btn btn-primary btn-sm">
+                                            Manage Flats →
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">F</div>
+                    <h3>No floors created yet</h3>
+                    <p>Add a floor to Wing {{ wing.name }} to proceed with creating flat units.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

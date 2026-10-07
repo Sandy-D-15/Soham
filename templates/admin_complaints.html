@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Maintenance Helpdesk | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Operations</span> / <strong>Maintenance Complaints</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+    <div class="header-title-group">
+        <h1>Room-Centric Maintenance Helpdesk</h1>
+        <p>Monitor resident complaints, filter by room number, track resolution timelines, and assign service technicians.</p>
+    </div>
+</div>
+
+<!-- Complaint Overview Stats Grid -->
+<div class="stats-grid" style="margin-bottom: 28px;">
+    <div class="stat-card">
+        <div class="stat-card-label">Total Complaints</div>
+        <div class="stat-card-value">{{ total_count }}</div>
+        <div class="stat-card-desc">All recorded tickets</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Open / Unresolved</div>
+        <div class="stat-card-value" style="color: #f87171;">{{ open_count }}</div>
+        <div class="stat-card-desc">Awaiting technician action</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">In Progress</div>
+        <div class="stat-card-value" style="color: #fbbf24;">{{ in_progress_count }}</div>
+        <div class="stat-card-desc">Under inspection / repair</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Resolved / Closed</div>
+        <div class="stat-card-value" style="color: #34d399;">{{ resolved_count }}</div>
+        <div class="stat-card-desc">Successfully resolved</div>
+    </div>
+</div>
+
+<!-- Filters & Search Toolbar -->
+<div class="glass-card" style="margin-bottom: 24px; padding: 18px 24px;">
+    <form method="GET" action="{{ url_for('complaints.index') }}" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
+        <div class="form-group" style="flex: 2; min-width: 220px; margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">Search (Room #, Member, Title, ID)</label>
+            <input type="text" name="q" value="{{ search_q }}" class="form-control" placeholder="e.g. 101, A-202, Sharma, Leakage..." style="padding: 8px 12px; font-size: 13px;">
+        </div>
+
+        <div class="form-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">Status</label>
+            <select name="status" class="form-control" style="padding: 8px 12px; font-size: 13px;">
+                <option value="All" {% if not status_filter or status_filter == 'All' %}selected{% endif %}>All Statuses</option>
+                <option value="Open" {% if status_filter == 'Open' %}selected{% endif %}>Open</option>
+                <option value="In Progress" {% if status_filter == 'In Progress' %}selected{% endif %}>In Progress</option>
+                <option value="Resolved" {% if status_filter == 'Resolved' %}selected{% endif %}>Resolved</option>
+                <option value="Closed" {% if status_filter == 'Closed' %}selected{% endif %}>Closed</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">Priority</label>
+            <select name="priority" class="form-control" style="padding: 8px 12px; font-size: 13px;">
+                <option value="All" {% if not priority_filter or priority_filter == 'All' %}selected{% endif %}>All Priorities</option>
+                <option value="Low" {% if priority_filter == 'Low' %}selected{% endif %}>Low</option>
+                <option value="Medium" {% if priority_filter == 'Medium' %}selected{% endif %}>Medium</option>
+                <option value="High" {% if priority_filter == 'High' %}selected{% endif %}>High</option>
+                <option value="Emergency" {% if priority_filter == 'Emergency' %}selected{% endif %}>Emergency</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+            <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">Category</label>
+            <select name="category" class="form-control" style="padding: 8px 12px; font-size: 13px;">
+                <option value="All" {% if not category_filter or category_filter == 'All' %}selected{% endif %}>All Categories</option>
+                <option value="Plumbing" {% if category_filter == 'Plumbing' %}selected{% endif %}>Plumbing</option>
+                <option value="Electrical" {% if category_filter == 'Electrical' %}selected{% endif %}>Electrical</option>
+                <option value="Lift" {% if category_filter == 'Lift' %}selected{% endif %}>Elevator / Lift</option>
+                <option value="Security" {% if category_filter == 'Security' %}selected{% endif %}>Security</option>
+                <option value="Cleanliness" {% if category_filter == 'Cleanliness' %}selected{% endif %}>Housekeeping</option>
+                <option value="Noise" {% if category_filter == 'Noise' %}selected{% endif %}>Noise / Disturbance</option>
+                <option value="Parking" {% if category_filter == 'Parking' %}selected{% endif %}>Parking</option>
+                <option value="Other" {% if category_filter == 'Other' %}selected{% endif %}>Other</option>
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+                🔍 Filter
+            </button>
+            {% if search_q or (status_filter and status_filter != 'All') or (priority_filter and priority_filter != 'All') or (category_filter and category_filter != 'All') %}
+                <a href="{{ url_for('complaints.index') }}" class="btn btn-secondary" style="padding: 8px 14px; font-size: 13px;">
+                    Reset
+                </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Complaints List by Room Number -->
+<div class="glass-card">
+    <div class="glass-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0;">Complaints Log ({{ complaints|length }})</h3>
+        <span class="badge badge-neutral" style="font-family: monospace;">Room-Centric View</span>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if complaints %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">#ID</th>
+                            <th style="width: 120px;">Room #</th>
+                            <th>Resident</th>
+                            <th>Issue & Category</th>
+                            <th style="width: 100px;">Priority</th>
+                            <th style="width: 120px;">Status</th>
+                            <th>Assigned To</th>
+                            <th style="width: 110px;">Date</th>
+                            <th style="text-align: right; width: 110px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in complaints %}
+                            <tr>
+                                <td>
+                                    <span class="badge badge-neutral" style="font-family: monospace;">#{{ c.id }}</span>
+                                </td>
+                                <td>
+                                    {% if c.flat %}
+                                        <span class="badge badge-indigo" style="font-size: 12px; font-weight: 700; padding: 4px 8px; letter-spacing: 0.5px;">
+                                            {% if c.flat.floor and c.flat.floor.wing %}
+                                                {{ c.flat.floor.wing.name }}-{{ c.flat.flat_number }}
+                                            {% else %}
+                                                Flat {{ c.flat.flat_number }}
+                                            {% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge badge-neutral" style="font-size: 11px;">Common Area</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if c.member %}
+                                        <div style="font-weight: 600; color: #f8fafc;">{{ c.member.full_name }}</div>
+                                        <div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">
+                                            {{ c.member.phone_number or c.member.email or '—' }}
+                                        </div>
+                                    {% else %}
+                                        <span style="color: var(--text-muted);">Unknown</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div style="font-weight: 600; color: #ffffff; margin-bottom: 2px;">
+                                        {{ c.title }}
+                                        {% if c.attachment_path %}
+                                            <span title="Attachment included" style="font-size: 12px; margin-left: 4px;">📎</span>
+                                        {% endif %}
+                                    </div>
+                                    <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
+                                        <span class="badge badge-indigo" style="font-size: 10px; padding: 2px 6px;">{{ c.category }}</span>
+                                        <span style="font-size: 12px; color: var(--text-secondary); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            {{ c.description }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge {% if c.priority == 'Emergency' %}badge-danger{% elif c.priority == 'High' %}badge-danger{% elif c.priority == 'Medium' %}badge-warning{% else %}badge-neutral{% endif %}" style="font-size: 11px;">
+                                        {{ c.priority }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if c.status in ['Resolved', 'Closed'] %}
+                                        <span class="badge badge-success" style="font-size: 11px;">✓ {{ c.status }}</span>
+                                    {% elif c.status == 'In Progress' %}
+                                        <span class="badge badge-warning" style="font-size: 11px;">⚡ In Progress</span>
+                                    {% else %}
+                                        <span class="badge badge-danger" style="font-size: 11px;">● Open</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if c.assigned_name %}
+                                        <div style="font-size: 12px; font-weight: 500; color: #e2e8f0;">{{ c.assigned_name }}</div>
+                                        {% if c.assigned_to_type %}
+                                            <div style="font-size: 10px; color: var(--text-muted);">{{ c.assigned_to_type }}</div>
+                                        {% endif %}
+                                    {% else %}
+                                        <span style="font-size: 11px; color: var(--text-muted); font-style: italic;">Unassigned</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">
+                                        {{ c.created_at.strftime('%d %b %Y') }}
+                                    </div>
+                                    <div style="font-size: 10px; color: var(--text-muted);">
+                                        {{ c.created_at.strftime('%I:%M %p') }}
+                                    </div>
+                                </td>
+                                <td style="text-align: right;">
+                                    <a href="{{ url_for('complaints.detail', complaint_id=c.id) }}" class="btn btn-secondary btn-sm" style="font-size: 12px; padding: 4px 10px; white-space: nowrap;">
+                                        Manage →
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state" style="padding: 48px 24px;">
+                <div class="empty-state-icon" style="font-size: 40px; margin-bottom: 12px;">🛡️</div>
+                <h3 style="margin-bottom: 8px;">No Complaints Found</h3>
+                <p style="color: var(--text-muted); max-width: 420px; margin: 0 auto;">
+                    {% if search_q or status_filter or priority_filter or category_filter %}
+                        No tickets match the selected filters. Try clearing your search parameters.
+                    {% else %}
+                        No complaints have been logged in the society. All systems are operational.
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

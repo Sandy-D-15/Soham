@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice #{{ bill.id }} - {{ month_name }} {{ bill.bill_year }} | Resident Portal{% endblock %}
+
+{% block breadcrumb %}
+    <span>Resident Portal</span> / <a href="{{ url_for('dashboard') }}">My Dashboard</a> / <strong>Invoice #{{ bill.id }}</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <div style="margin-bottom: 4px;">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">← Back to Resident Dashboard</a>
+        </div>
+        <h1>Maintenance Invoice #{{ bill.id }}</h1>
+        <p>{{ month_name }} {{ bill.bill_year }} invoice for Flat {{ bill.flat.flat_number }}.</p>
+    </div>
+    <div>
+        {% if bill.status == 'Paid' %}
+            <span class="badge badge-paid" style="font-size: 14px; padding: 6px 16px;">Paid in Full</span>
+        {% elif bill.status == 'Partial' %}
+            <span class="badge badge-partial" style="font-size: 14px; padding: 6px 16px;">Partially Paid</span>
+        {% else %}
+            <span class="badge badge-unpaid" style="font-size: 14px; padding: 6px 16px;">Unpaid</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Financial Summary Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-label">Total Invoiced</div>
+        <div class="stat-card-value">₹{{ "%.2f"|format(bill.total_amount) }}</div>
+        <div class="stat-card-hint">Issued: {{ bill.bill_date.strftime('%d %b %Y') if bill.bill_date else '--' }}</div>
+    </div>
+
+    <div class="stat-card" style="border-color: rgba(16, 185, 129, 0.25);">
+        <div class="stat-card-label">Paid to Date</div>
+        <div class="stat-card-value" style="color: #34d399;">₹{{ "%.2f"|format(bill.paid_amount) }}</div>
+        <div class="stat-card-hint">{{ payments|length }} payment entries</div>
+    </div>
+
+    <div class="stat-card" style="border-color: {% if bill.balance_amount > 0 %}rgba(239, 68, 68, 0.25){% else %}rgba(16, 185, 129, 0.25){% endif %};">
+        <div class="stat-card-label">Balance Outstanding</div>
+        <div class="stat-card-value" style="color: {% if bill.balance_amount > 0 %}#f87171{% else %}#34d399{% endif %};">
+            ₹{{ "%.2f"|format(bill.balance_amount) }}
+        </div>
+        <div class="stat-card-hint">Due by {{ bill.due_date.strftime('%d %b %Y') if bill.due_date else '--' }}</div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr minmax(300px, 380px); gap: 24px; align-items: start; margin-bottom: 28px;">
+    <!-- Bill Line Items Breakdown -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Invoice Breakdown & Charges</h3>
+            <span class="badge badge-neutral">{{ bill.items|length }} Components</span>
+        </div>
+        <div class="glass-card-body" style="padding: 0;">
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Method</th>
+                            <th>Rate</th>
+                            <th>Quantity</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in bill.items %}
+                            <tr>
+                                <td><strong style="color: white;">{{ item.component_name }}</strong></td>
+                                <td><span class="badge badge-neutral">{{ item.calculation_method }}</span></td>
+                                <td>₹{{ "%.2f"|format(item.rate) }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td style="text-align: right;"><strong style="color: white;">₹{{ "%.2f"|format(item.amount) }}</strong></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr style="border-top: 1px solid var(--border-light); background: rgba(255, 255, 255, 0.02);">
+                            <td colspan="4" style="text-align: right; font-weight: 600; color: var(--text-secondary);">Subtotal:</td>
+                            <td style="text-align: right; font-weight: 700; color: white;">₹{{ "%.2f"|format(bill.subtotal) }}</td>
+                        </tr>
+                        {% if bill.penalty_amount and bill.penalty_amount > 0 %}
+                            <tr style="background: rgba(239, 68, 68, 0.05);">
+                                <td colspan="4" style="text-align: right; font-weight: 600; color: #f87171;">Late Fee:</td>
+                                <td style="text-align: right; font-weight: 700; color: #f87171;">+₹{{ "%.2f"|format(bill.penalty_amount) }}</td>
+                            </tr>
+                        {% endif %}
+                        <tr style="background: rgba(99, 102, 241, 0.08); font-size: 15px;">
+                            <td colspan="4" style="text-align: right; font-weight: 700; color: #a5b4fc;">Total Amount:</td>
+                            <td style="text-align: right; font-weight: 800; color: white;">₹{{ "%.2f"|format(bill.total_amount) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Property Details Card -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Property Details</h3>
+            <span class="badge badge-info">Residence</span>
+        </div>
+        <div class="glass-card-body">
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13.5px;">
+                <div><span style="color: var(--text-muted);">Flat Unit:</span> <strong>Flat {{ bill.flat.flat_number }}</strong></div>
+                <div><span style="color: var(--text-muted);">Building:</span> {{ bill.flat.floor.wing.building.name }} - Wing {{ bill.flat.floor.wing.name }}</div>
+                <div><span style="color: var(--text-muted);">Floor:</span> {% if bill.flat.floor.floor_number == 0 %}Ground Floor{% else %}Floor {{ bill.flat.floor.floor_number }}{% endif %}</div>
+                <div><span style="color: var(--text-muted);">Carpet Area:</span> {{ bill.flat.carpet_area or '-' }} sq.ft.</div>
+                <div><span style="color: var(--text-muted);">Category:</span> {{ bill.flat.maintenance_category }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment History Table -->
+<div class="glass-card">
+    <div class="glass-card-header">
+        <div>
+            <h3>Your Payments for this Invoice</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Instant receipts issued by society office</span>
+        </div>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if payments %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Payment #</th>
+                            <th>Date</th>
+                            <th>Mode</th>
+                            <th>Amount Paid</th>
+                            <th>Txn Reference</th>
+                            <th>Official Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in payments %}
+                            <tr>
+                                <td><span class="badge badge-neutral">#{{ p.id }}</span></td>
+                                <td>{{ p.payment_date.strftime('%d %b %Y') if p.payment_date else '--' }}</td>
+                                <td><span class="badge badge-info">{{ p.payment_mode }}</span></td>
+                                <td><strong style="color: #34d399;">₹{{ "%.2f"|format(p.amount) }}</strong></td>
+                                <td>{{ p.reference_number or '--' }}</td>
+                                <td>
+                                    <a href="{{ url_for('payment_receipt', payment_id=p.id) }}" class="btn btn-primary btn-sm">
+                                        View & Print Receipt →
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">₹</div>
+                <h3>No payments recorded yet</h3>
+                <p>Please pay your outstanding maintenance to the society office or bank account to clear this balance.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

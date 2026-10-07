@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Resident Requests | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Residents</span> / <strong>Registration Requests</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Resident Self-Registration Requests</h1>
+        <p>Review, verify, and approve resident access requests for flats in {{ current_society.name if current_society else "the society" }}.</p>
+    </div>
+</div>
+
+<!-- Tabs & Filter Bar -->
+<div class="glass-card" style="padding: 18px 24px; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <!-- Status Tabs -->
+        <div style="display: flex; gap: 8px;">
+            <a href="{{ url_for('admin.requests', status='pending', q=search_q) }}" class="btn btn-sm {% if status_filter == 'pending' %}btn-primary{% else %}btn-secondary{% endif %}">
+                Pending Requests ({{ pending_count }})
+            </a>
+            <a href="{{ url_for('admin.requests', status='approved', q=search_q) }}" class="btn btn-sm {% if status_filter == 'approved' %}btn-primary{% else %}btn-secondary{% endif %}">
+                Approved ({{ approved_count }})
+            </a>
+            <a href="{{ url_for('admin.requests', status='rejected', q=search_q) }}" class="btn btn-sm {% if status_filter == 'rejected' %}btn-primary{% else %}btn-secondary{% endif %}">
+                Rejected ({{ rejected_count }})
+            </a>
+        </div>
+
+        <!-- Search Form -->
+        <form method="GET" action="{{ url_for('admin.requests') }}" style="display: flex; gap: 8px; align-items: center;">
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            <input
+                type="text"
+                name="q"
+                value="{{ search_q }}"
+                class="form-control"
+                placeholder="Search name, email, flat..."
+                style="padding: 7px 12px; font-size: 13px; width: 220px;"
+            >
+            <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+            {% if search_q %}
+                <a href="{{ url_for('admin.requests', status=status_filter) }}" class="btn btn-secondary btn-sm">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+{% if status_filter == 'pending' and request_items %}
+    <form method="POST" action="{{ url_for('admin.bulk_approve_requests') }}" id="bulkForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleSelectAll()">Select All</button>
+            <button type="submit" class="btn btn-primary btn-sm" id="bulkApproveBtn" disabled onclick="return confirm('Approve all selected requests?');">
+                ✓ Bulk Approve Selected
+            </button>
+        </div>
+    </form>
+{% endif %}
+
+<div class="glass-card" style="padding: 0; overflow: hidden;">
+    <div class="table-responsive">
+        <table class="table" style="margin: 0; font-size: 13.5px;">
+            <thead>
+                <tr>
+                    {% if status_filter == 'pending' %}
+                        <th style="width: 40px; text-align: center;">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)">
+                        </th>
+                    {% endif %}
+                    <th>Resident Name</th>
+                    <th>Contact Info</th>
+                    <th>Requested Flat</th>
+                    <th>Relation</th>
+                    <th>Submitted Notes</th>
+                    <th>Submitted On</th>
+                    {% if status_filter == 'rejected' %}
+                        <th>Rejection Reason</th>
+                    {% endif %}
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if request_items %}
+                    {% for item in request_items %}
+                        {% set req = item.request %}
+                        {% set u = req.user %}
+                        {% set flat = req.flat %}
+                        <tr>
+                            {% if status_filter == 'pending' %}
+                                <td style="text-align: center;">
+                                    <input type="checkbox" name="request_ids" value="{{ req.id }}" form="bulkForm" class="row-checkbox" onchange="handleCheckboxChange()">
+                                </td>
+                            {% endif %}
+                            <td>
+                                <strong>{{ u.full_name }}</strong>
+                                {% if item.existing_owner %}
+                                    <div style="font-size: 11px; color: #f59e0b; margin-top: 2px;">
+                                        ⚠️ Duplicate Owner Notice
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>{{ u.email }}</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">{{ u.mobile }}</div>
+                            </td>
+                            <td>
+                                <span class="badge badge-info" style="font-weight: 600;">
+                                    {{ flat.floor.wing.name if flat.floor and flat.floor.wing else '' }}-{{ flat.flat_number }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if req.relation_type == 'Owner' %}badge-primary{% elif req.relation_type == 'Tenant' %}badge-warning{% else %}badge-secondary{% endif %}">
+                                    {{ req.relation_type }}
+                                </span>
+                            </td>
+                            <td style="max-width: 220px; font-size: 12.5px; color: var(--text-muted);">
+                                {{ req.notes or '—' }}
+                            </td>
+                            <td style="font-size: 12.5px; color: var(--text-muted);">
+                                {{ req.created_at.strftime('%d %b %Y, %H:%M') if req.created_at else '' }}
+                            </td>
+                            {% if status_filter == 'rejected' %}
+                                <td style="color: #ef4444; font-size: 12.5px;">
+                                    {{ req.rejection_reason or '—' }}
+                                </td>
+                            {% endif %}
+                            <td style="text-align: right;">
+                                {% if req.status == 'pending' %}
+                                    <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                                        {% if item.existing_owner %}
+                                            <!-- Conflict Modal Trigger -->
+                                            <button
+                                                type="button"
+                                                class="btn btn-warning btn-sm"
+                                                onclick="openConflictModal({{ req.id }}, '{{ u.full_name }}', '{{ flat.flat_number }}', '{{ item.existing_owner.user.full_name }}')"
+                                            >
+                                                ⚠️ Review &amp; Approve
+                                            </button>
+                                        {% else %}
+                                            <form method="POST" action="{{ url_for('admin.approve_request', req_id=req.id) }}" style="display: inline;">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Approve registration for {{ u.full_name }} (Flat {{ flat.flat_number }})?');">
+                                                    ✓ Approve
+                                                </button>
+                                            </form>
+                                        {% endif %}
+
+                                        <!-- Reject Trigger -->
+                                        <button
+                                            type="button"
+                                            class="btn btn-danger btn-sm"
+                                            onclick="openRejectModal({{ req.id }}, '{{ u.full_name }}')"
+                                        >
+                                            ✗ Reject
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <span class="badge {% if req.status == 'approved' %}badge-success{% else %}badge-danger{% endif %}">
+                                        {{ req.status | capitalize }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 48px; color: var(--text-muted);">
+                            <div style="font-size: 32px; margin-bottom: 8px;">📋</div>
+                            <p style="font-size: 14.5px; font-weight: 500;">No requests found in this view</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="modal" style="display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="glass-card" style="max-width: 440px; width: 90%; padding: 28px; background: #111827; border: 1px solid rgba(255,255,255,0.15);">
+        <h3 style="font-size: 17px; margin-bottom: 8px; color: #f87171;">Reject Registration</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;" id="rejectModalText">
+            Please specify the reason for rejecting this request. The applicant will see this reason.
+        </p>
+        <form method="POST" id="rejectForm" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Reason (Min 5 chars) *</label>
+                <textarea name="reason" class="form-control" required minlength="5" placeholder="e.g. Identity proof not verified with registry records" style="width: 100%; min-height: 80px;"></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeRejectModal()">Cancel</button>
+                <button type="submit" class="btn btn-danger btn-sm">Confirm Rejection</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Duplicate Owner Conflict Modal -->
+<div id="conflictModal" class="modal" style="display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="glass-card" style="max-width: 480px; width: 90%; padding: 28px; background: #111827; border: 1px solid rgba(245, 158, 11, 0.3);">
+        <h3 style="font-size: 17px; margin-bottom: 8px; color: #fbbf24;">⚠️ Primary Owner Conflict</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;" id="conflictModalText">
+            This flat already has an active primary owner registered.
+        </p>
+        <form method="POST" id="conflictForm" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">Approve this resident as:</label>
+                <select name="override_relation" class="form-control" style="width: 100%; padding: 10px;">
+                    <option value="Tenant">Tenant</option>
+                    <option value="Family Member">Family Member</option>
+                    <option value="Co-owner">Co-owner</option>
+                </select>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeConflictModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm">Approve with Selected Role</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function handleCheckboxChange() {
+        const checked = document.querySelectorAll('.row-checkbox:checked');
+        const btn = document.getElementById('bulkApproveBtn');
+        if (btn) btn.disabled = checked.length === 0;
+    }
+
+    function toggleSelectAll(checked) {
+        const cbs = document.querySelectorAll('.row-checkbox');
+        const master = document.getElementById('selectAllCheckbox');
+        const target = (checked !== undefined) ? checked : !master.checked;
+        master.checked = target;
+        cbs.forEach(cb => cb.checked = target);
+        handleCheckboxChange();
+    }
+
+    function openRejectModal(reqId, name) {
+        const modal = document.getElementById('rejectModal');
+        const form = document.getElementById('rejectForm');
+        form.action = `/admin/requests/${reqId}/reject`;
+        document.getElementById('rejectModalText').textContent = `Rejecting registration request for ${name}. This reason will be recorded and shown to the applicant.`;
+        modal.style.display = 'flex';
+    }
+
+    function closeRejectModal() {
+        document.getElementById('rejectModal').style.display = 'none';
+    }
+
+    function openConflictModal(reqId, name, flatNum, currentOwner) {
+        const modal = document.getElementById('conflictModal');
+        const form = document.getElementById('conflictForm');
+        form.action = `/admin/requests/${reqId}/approve`;
+        document.getElementById('conflictModalText').innerHTML = `Flat <strong>${flatNum}</strong> already has an active primary owner (<strong>${currentOwner}</strong>). How would you like to approve <strong>${name}</strong>?`;
+        modal.style.display = 'flex';
+    }
+
+    function closeConflictModal() {
+        document.getElementById('conflictModal').style.display = 'none';
+    }
+</script>
+{% endblock %}

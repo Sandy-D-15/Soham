@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Maintenance Components | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Maintenance</span> / <strong>Bill Components</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Maintenance Components Configuration</h1>
+        <p>Define recurring billing components such as Fixed Service charges, Per Sq Ft maintenance, Sinking funds, and Lift charges.</p>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <a href="{{ url_for('maintenance_bills') }}" class="btn btn-secondary">
+            <span>▤</span> View Bills
+        </a>
+        <a href="{{ url_for('generate_maintenance_bills') }}" class="btn btn-primary">
+            <span>＋</span> Generate Monthly Bills
+        </a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 24px; align-items: start;">
+    <!-- Add Component Card -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Add Billing Component</h3>
+            <span class="badge badge-info">Rule</span>
+        </div>
+        <div class="glass-card-body">
+            <form method="POST" action="{{ url_for('maintenance_components') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label">Component Name *</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Society Maintenance Charge" required>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label">Purpose Category *</label>
+                    <select name="purpose" class="form-control" required>
+                        <option value="Regular Maintenance" selected>Regular Maintenance</option>
+                        <option value="Sinking Fund">Sinking Fund</option>
+                        <option value="Repair Fund">Repair Fund</option>
+                        <option value="Lift Maintenance">Lift Maintenance</option>
+                        <option value="Water Fund">Water Fund</option>
+                        <option value="Security Fund">Security Fund</option>
+                        <option value="Parking Charges">Parking Charges</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div class="form-group">
+                        <label class="form-label">Calculation *</label>
+                        <select name="calculation_method" class="form-control" required>
+                            <option value="Fixed" selected>Fixed Amount</option>
+                            <option value="Per Square Foot">Per Sq. Foot</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Amount / Rate (₹) *</label>
+                        <input type="number" step="0.01" min="0.01" name="amount" class="form-control" placeholder="0.00" required>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label">Applicable To *</label>
+                    <select name="applicable_to" class="form-control" required>
+                        <option value="All Flats" selected>All Flats</option>
+                        <option value="Standard">Standard Flats Only</option>
+                        <option value="Premium">Premium Flats Only</option>
+                        <option value="Commercial">Commercial Units Only</option>
+                        <option value="Penthouse">Penthouses Only</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">Description (Optional)</label>
+                    <textarea name="description" class="form-control" rows="2" placeholder="Brief note on calculation rationale..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <span>＋</span> Save Component
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Components Table Card -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Active Billing Components</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Used during bill generation</span>
+        </div>
+        <div class="glass-card-body" style="padding: 0;">
+            {% if components %}
+                <div class="table-container" style="border: none; border-radius: 0;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Method</th>
+                                <th>Rate / Amount</th>
+                                <th>Applicability</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in components %}
+                                <tr>
+                                    <td>
+                                        <strong style="color: white; font-size: 14px;">{{ c.name }}</strong>
+                                        <div style="font-size: 11px; color: var(--text-muted);">{{ c.purpose }}</div>
+                                    </td>
+                                    <td><span class="badge badge-neutral">{{ c.calculation_method }}</span></td>
+                                    <td>
+                                        <strong style="color: #38bdf8;">
+                                            ₹{{ "%.2f"|format(c.amount) }}
+                                            {% if c.calculation_method == 'Per Square Foot' %}<span style="font-size: 11px; color: var(--text-muted);">/sq.ft</span>{% endif %}
+                                        </strong>
+                                    </td>
+                                    <td><span class="badge badge-info">{{ c.applicable_to }}</span></td>
+                                    <td>
+                                        {% if c.status %}
+                                            <span class="badge badge-success">Active</span>
+                                        {% else %}
+                                            <span class="badge badge-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('toggle_maintenance_component', component_id=c.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn {% if c.status %}btn-danger{% else %}btn-success{% endif %} btn-sm">
+                                                {% if c.status %}Deactivate{% else %}Activate{% endif %}
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">◇</div>
+                    <h3>No billing components created</h3>
+                    <p>Add components like Regular Maintenance or Sinking Fund. These rules calculate each resident's monthly bill.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

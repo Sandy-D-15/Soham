@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Salary & Payroll | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <a href="{{ url_for('staff_directory') }}">Staff</a> / <strong>Salary & Payroll</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Staff Salary & Payroll</h1>
+        <p>Generate, approve, and disburse monthly worker salaries with automatic financial debit transactions.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('staff_directory') }}" class="btn btn-secondary">
+            ← Staff Directory
+        </a>
+    </div>
+</div>
+
+<!-- Payroll Overview Cards -->
+<div class="stats-grid" style="margin-bottom: 28px;">
+    <div class="stat-card">
+        <div class="stat-card-label">Selected Month</div>
+        <div class="stat-card-value" style="color: #a5b4fc;">{{ selected_month }}</div>
+        <div class="stat-card-desc">Active payroll cycle</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Total Salary Slips</div>
+        <div class="stat-card-value">{{ payments|length }}</div>
+        <div class="stat-card-desc">Generated for this month</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Total Disbursed</div>
+        <div class="stat-card-value" style="color: #34d399;">
+            ₹{{ "%.2f"|format(total_paid_amount) }}
+        </div>
+        <div class="stat-card-desc">Debited to liquid accounts</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-label">Pending Payouts</div>
+        <div class="stat-card-value" style="color: #fbbf24;">
+            ₹{{ "%.2f"|format(total_pending_amount) }}
+        </div>
+        <div class="stat-card-desc">Awaiting approval / payment</div>
+    </div>
+</div>
+
+<!-- Actions Card: Filter Month & Generate Slips -->
+<div class="glass-card" style="margin-bottom: 28px;">
+    <div class="glass-card-header">
+        <h3>Payroll Operations</h3>
+        <span class="badge badge-info">Monthly Cycle</span>
+    </div>
+    <div class="glass-card-body" style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; align-items: flex-end;">
+        <form method="GET" action="{{ url_for('staff_payments') }}" style="display: flex; gap: 12px; align-items: flex-end;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Select Month (YYYY-MM)</label>
+                <input type="month" name="month_year" class="form-control" value="{{ selected_month }}" required>
+            </div>
+            <button type="submit" class="btn btn-secondary">
+                View Month
+            </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('generate_staff_payments') }}" style="display: flex; gap: 12px; align-items: flex-end;"
+              onsubmit="return confirm('Generate monthly salary slips for all active staff for month ' + this.month_year.value + '?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="month_year" value="{{ selected_month }}">
+            <button type="submit" class="btn btn-primary">
+                ⚡ Generate Slips for {{ selected_month }}
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Payments Table -->
+<div class="glass-card">
+    <div class="glass-card-header">
+        <h3>Salary Records for {{ selected_month }}</h3>
+        <span class="badge badge-neutral">{{ payments|length }} Records</span>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if payments %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Staff Member</th>
+                            <th>Role</th>
+                            <th>Base Salary</th>
+                            <th>Bonus (+)</th>
+                            <th>Deduction (−)</th>
+                            <th>Net Payable</th>
+                            <th>Status</th>
+                            <th>Payment Details</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in payments %}
+                            <tr>
+                                <td><span class="badge badge-neutral">#{{ p.id }}</span></td>
+                                <td><strong style="color: white;">{{ p.staff.name }}</strong></td>
+                                <td><span class="badge badge-indigo">{{ p.staff.role }}</span></td>
+                                <td>₹{{ "%.2f"|format(p.base_salary) }}</td>
+                                <td>+₹{{ "%.2f"|format(p.bonus_amount) }}</td>
+                                <td>-₹{{ "%.2f"|format(p.deduction_amount) }}</td>
+                                <td><strong style="color: #34d399; font-size: 15px;">₹{{ "%.2f"|format(p.net_amount) }}</strong></td>
+                                <td>
+                                    {% if p.status == 'Paid' %}
+                                        <span class="badge badge-success">✓ Paid</span>
+                                    {% elif p.status == 'Approved' %}
+                                        <span class="badge badge-info">Approved</span>
+                                    {% elif p.status == 'Rejected' %}
+                                        <span class="badge badge-danger">Rejected</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">Pending Approval</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if p.status == 'Paid' %}
+                                        <div style="font-size: 12px; color: var(--text-secondary);">
+                                            Paid: {{ p.payment_date.strftime('%d %b %Y') if p.payment_date else '--' }}
+                                        </div>
+                                        <div style="font-size: 11px; color: var(--text-muted);">
+                                            Via: {{ p.account.name if p.account else p.payment_mode }}
+                                            {% if p.reference_number %} | Ref: {{ p.reference_number }}{% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span style="color: var(--text-muted); font-size: 12px;">Unpaid</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: right;">
+                                    {% if p.status == 'Pending Approval' %}
+                                        <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                                            <form method="POST" action="{{ url_for('approve_staff_payment', payment_id=p.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('reject_staff_payment', payment_id=p.id) }}"
+                                                  onsubmit="return confirm('Reject this salary slip?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                                            </form>
+                                        </div>
+                                    {% elif p.status == 'Approved' %}
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="openDisburseSalaryModal({{ p.id }}, '{{ p.staff.name }}', '{{ p.net_amount }}')">
+                                            💸 Disburse
+                                        </button>
+                                    {% else %}
+                                        <span style="color: var(--text-muted); font-size: 12px;">Completed</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">💳</div>
+                <h3>No Salary Slips for {{ selected_month }}</h3>
+                <p>Click "Generate Slips" above to create monthly salary vouchers for active staff.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: Disburse Salary Payment -->
+<div id="disburseSalaryModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="glass-card" style="width: 480px; max-width: 95%;">
+        <div class="glass-card-header">
+            <h3>Disburse Salary Payout</h3>
+            <button type="button" onclick="closeDisburseSalaryModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">&times;</button>
+        </div>
+        <div class="glass-card-body">
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                Disbursing salary of <strong id="modalStaffName" style="color: #fff;"></strong> for <strong id="modalSalaryAmount" style="color: #34d399;"></strong>. A DEBIT transaction will be posted to the selected account.
+            </p>
+            <form id="disburseSalaryForm" method="POST" action="">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label class="form-label">Payment Account *</label>
+                    <select name="account_id" class="form-control" required>
+                        <option value="">Select Account</option>
+                        {% for acc in accounts %}
+                            <option value="{{ acc.id }}">{{ acc.name }} ({{ acc.account_type }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Mode *</label>
+                    <select name="payment_mode" class="form-control" required>
+                        <option value="Bank Transfer">Bank Transfer / NEFT / IMPS</option>
+                        <option value="UPI">UPI</option>
+                        <option value="Cheque">Cheque</option>
+                        <option value="Cash">Cash</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Date *</label>
+                    <input type="date" name="payment_date" class="form-control" value="{{ today_str }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Transaction / Cheque Reference</label>
+                    <input type="text" name="reference_number" class="form-control" placeholder="e.g. UTR123890 or Cheque #004312">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Remarks</label>
+                    <input type="text" name="remarks" class="form-control" placeholder="Optional notes">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeDisburseSalaryModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm & Disburse</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openDisburseSalaryModal(id, staffName, amount) {
+    document.getElementById('modalStaffName').innerText = staffName;
+    document.getElementById('modalSalaryAmount').innerText = '₹' + parseFloat(amount).toFixed(2);
+    document.getElementById('disburseSalaryForm').action = '/staff/payments/' + id + '/disburse';
+    document.getElementById('disburseSalaryModal').style.display = 'flex';
+}
+
+function closeDisburseSalaryModal() {
+    document.getElementById('disburseSalaryModal').style.display = 'none';
+}
+</script>
+{% endblock %}

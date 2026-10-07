@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Buildings | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Society Management</span> / <strong>Buildings</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Building Management</h1>
+        <p>Register society towers and residential blocks to configure wings, floors, and flats.</p>
+    </div>
+    <div class="badge badge-info" style="font-size: 13px; padding: 6px 14px;">
+        {{ buildings|length }} Registered Buildings
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 24px; align-items: start;">
+    <!-- Add Building Card -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Add New Building</h3>
+            <span class="badge badge-neutral">Block</span>
+        </div>
+        <div class="glass-card-body">
+            <form method="POST" action="{{ url_for('buildings') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Building / Tower Name *</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Tower A or Orchid Block" required>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">Address / Landmark (Optional)</label>
+                    <input type="text" name="address" class="form-control" placeholder="e.g. North Gate">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <span>＋</span> Save Building
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Buildings List Card -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Registered Society Buildings</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Configure internal wings per building</span>
+        </div>
+        <div class="glass-card-body" style="padding: 0;">
+            {% if buildings %}
+                <div class="table-container" style="border: none; border-radius: 0;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Building Name</th>
+                                <th>Address Note</th>
+                                <th>Wings</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in buildings %}
+                                <tr>
+                                    <td><span class="badge badge-neutral">#{{ b.id }}</span></td>
+                                    <td><strong style="font-size: 14px; color: white;">{{ b.name }}</strong></td>
+                                    <td>{{ b.address or '--' }}</td>
+                                    <td>
+                                        <span class="badge badge-info">{{ b.wings|length }} Wings</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('wings', building_id=b.id) }}" class="btn btn-primary btn-sm">
+                                            Manage Wings →
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">▦</div>
+                    <h3>No buildings registered</h3>
+                    <p>Start setting up your society structure by adding your first building or tower.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

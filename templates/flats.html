@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Flats - Floor {{ floor.floor_number }} | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Society Management</span> / <a href="{{ url_for('buildings') }}">{{ building.name }}</a> / <a href="{{ url_for('wings', building_id=building.id) }}">Wing {{ wing.name }}</a> / <a href="{{ url_for('floors', wing_id=wing.id) }}">Floor {{ floor.floor_number }}</a> / <strong>Flats</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <div style="margin-bottom: 4px;">
+            <a href="{{ url_for('floors', wing_id=wing.id) }}" class="btn btn-secondary btn-sm">← Back to Wing {{ wing.name }} Floors</a>
+        </div>
+        <h1>Flat Management — {% if floor.floor_number == 0 %}Ground Floor{% else %}Floor {{ floor.floor_number }}{% endif %}</h1>
+        <p>{{ building.name }} &gt; Wing {{ wing.name }} &gt; Floor {{ floor.floor_number }} residential units and commercial shops.</p>
+    </div>
+    <div class="badge badge-info" style="font-size: 13px; padding: 6px 14px;">
+        {{ flats|length }} Flats on this Floor
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(320px, 400px) 1fr; gap: 24px; align-items: start;">
+    <!-- Add Flat Form -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Add New Flat Unit</h3>
+            <span class="badge badge-neutral">Unit</span>
+        </div>
+        <div class="glass-card-body">
+            <form method="POST" action="{{ url_for('flats', floor_id=floor.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label">Flat / Unit Number *</label>
+                    <input type="text" name="flat_number" class="form-control" placeholder="e.g. 101, A-102" required>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label">Flat Type *</label>
+                    <select name="flat_type" class="form-control" required>
+                        <option value="1BHK">1 BHK</option>
+                        <option value="2BHK" selected>2 BHK</option>
+                        <option value="3BHK">3 BHK</option>
+                        <option value="4BHK">4 BHK</option>
+                        <option value="Studio">Studio</option>
+                        <option value="Penthouse">Penthouse</option>
+                        <option value="Shop">Commercial Shop</option>
+                        <option value="Office">Commercial Office</option>
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div class="form-group">
+                        <label class="form-label">Carpet Area (sq.ft)</label>
+                        <input type="number" step="0.01" name="carpet_area" class="form-control" placeholder="650">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Built-up Area (sq.ft)</label>
+                        <input type="number" step="0.01" name="built_up_area" class="form-control" placeholder="850">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label">Maintenance Category *</label>
+                    <select name="maintenance_category" class="form-control" required>
+                        <option value="Standard" selected>Standard</option>
+                        <option value="Premium">Premium</option>
+                        <option value="Commercial">Commercial</option>
+                        <option value="Penthouse">Penthouse</option>
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div class="form-group">
+                        <label class="form-label">Ownership</label>
+                        <select name="ownership_status" class="form-control">
+                            <option value="Owned" selected>Owned</option>
+                            <option value="Society Owned">Society Owned</option>
+                            <option value="Builder Owned">Builder Owned</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Occupancy</label>
+                        <select name="occupancy_status" class="form-control">
+                            <option value="Vacant" selected>Vacant</option>
+                            <option value="Occupied">Occupied</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">Parking Allotment (Optional)</label>
+                    <input type="text" name="parking_information" class="form-control" placeholder="e.g. Slot P-12">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <span>＋</span> Save Flat Unit
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Flats Table -->
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3>Registered Flats</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Floor units list</span>
+        </div>
+        <div class="glass-card-body" style="padding: 0;">
+            {% if flats %}
+                <div class="table-container" style="border: none; border-radius: 0;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Flat #</th>
+                                <th>Type</th>
+                                <th>Carpet Area</th>
+                                <th>Category</th>
+                                <th>Occupancy</th>
+                                <th>Parking</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in flats %}
+                                <tr>
+                                    <td><strong style="color: white; font-size: 15px;">Flat {{ f.flat_number }}</strong></td>
+                                    <td><span class="badge badge-info">{{ f.flat_type or '--' }}</span></td>
+                                    <td>{{ f.carpet_area or '--' }} sq.ft</td>
+                                    <td>{{ f.maintenance_category }}</td>
+                                    <td>
+                                        {% if f.occupancy_status == 'Occupied' %}
+                                            <span class="badge badge-success">Occupied</span>
+                                        {% else %}
+                                            <span class="badge badge-neutral">Vacant</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ f.parking_information or '--' }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">▣</div>
+                    <h3>No flats registered on this floor</h3>
+                    <p>Use the form on the left to add residential or commercial units to this floor.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

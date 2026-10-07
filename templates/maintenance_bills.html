@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Maintenance Bills | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Maintenance</span> / <strong>Bills & Payments</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Maintenance Bills & Dues</h1>
+        <p>Review issued invoices, collect resident payments, track outstanding balances, and issue receipts.</p>
+    </div>
+    <div style="display: flex; gap: 12px;">
+        <a href="{{ url_for('maintenance_components') }}" class="btn btn-secondary">
+            <span>◇</span> Billing Rules
+        </a>
+        <a href="{{ url_for('generate_maintenance_bills') }}" class="btn btn-primary">
+            <span>＋</span> Generate Bills
+        </a>
+    </div>
+</div>
+
+<!-- Month / Year Filter Bar -->
+<div class="glass-card" style="margin-bottom: 24px;">
+    <div class="glass-card-body" style="padding: 16px 20px;">
+        <form method="GET" action="{{ url_for('maintenance_bills') }}" style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Billing Month:</label>
+                <select name="month" class="form-control" style="width: 150px;">
+                    {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>
+                            {{ calendar.month_name[m] }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Year:</label>
+                <input type="number" name="year" class="form-control" value="{{ selected_year }}" style="width: 100px;">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-sm">Filter Invoices</button>
+            <a href="{{ url_for('maintenance_bills') }}" class="btn btn-secondary btn-sm">Reset</a>
+        </form>
+    </div>
+</div>
+
+<!-- Month Summary Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-label">
+            <span>Total Invoiced ({{ month_name }} {{ selected_year }})</span>
+            <span class="badge badge-info">Billed</span>
+        </div>
+        <div class="stat-card-value">₹{{ "%.2f"|format(total_amount) }}</div>
+        <div class="stat-card-hint">{{ bills|length }} flat invoices</div>
+    </div>
+
+    <div class="stat-card" style="border-color: rgba(16, 185, 129, 0.25);">
+        <div class="stat-card-label">
+            <span>Total Collected</span>
+            <span class="badge badge-success">Received</span>
+        </div>
+        <div class="stat-card-value" style="color: #34d399;">₹{{ "%.2f"|format(total_paid) }}</div>
+        <div class="stat-card-hint">Credited into bank/cash accounts</div>
+    </div>
+
+    <div class="stat-card" style="border-color: rgba(239, 68, 68, 0.25);">
+        <div class="stat-card-label">
+            <span>Outstanding Balance</span>
+            <span class="badge badge-danger">Unpaid</span>
+        </div>
+        <div class="stat-card-value" style="color: #f87171;">₹{{ "%.2f"|format(total_balance) }}</div>
+        <div class="stat-card-hint">Pending collection from members</div>
+    </div>
+</div>
+
+<!-- Bills Table -->
+<div class="glass-card">
+    <div class="glass-card-header">
+        <h3>{{ month_name }} {{ selected_year }} Invoices</h3>
+        <span style="font-size: 12px; color: var(--text-muted);">Click "View Bill" to collect payments or inspect breakdown</span>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if bills %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Bill #</th>
+                            <th>Flat</th>
+                            <th>Building & Wing</th>
+                            <th>Total Amount</th>
+                            <th>Collected</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in bills %}
+                            <tr>
+                                <td><strong>#{{ b.id }}</strong></td>
+                                <td><strong style="color: white; font-size: 14px;">Flat {{ b.flat.flat_number }}</strong></td>
+                                <td>{{ b.flat.floor.wing.building.name }} - Wing {{ b.flat.floor.wing.name }}</td>
+                                <td><strong>₹{{ "%.2f"|format(b.total_amount) }}</strong></td>
+                                <td style="color: #34d399;">₹{{ "%.2f"|format(b.paid_amount) }}</td>
+                                <td style="color: {% if b.balance_amount > 0 %}#f87171{% else %}#94a3b8{% endif %}; font-weight: 600;">
+                                    ₹{{ "%.2f"|format(b.balance_amount) }}
+                                </td>
+                                <td>
+                                    {% if b.status == 'Paid' %}
+                                        <span class="badge badge-paid">Paid</span>
+                                    {% elif b.status == 'Partial' %}
+                                        <span class="badge badge-partial">Partial</span>
+                                    {% else %}
+                                        <span class="badge badge-unpaid">Unpaid</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('maintenance_bill_detail', bill_id=b.id) }}" class="btn btn-secondary btn-sm">
+                                        View Bill & Pay →
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">▤</div>
+                <h3>No bills found for {{ month_name }} {{ selected_year }}</h3>
+                <p>No maintenance bills were generated for this billing cycle. Generate them now with one click.</p>
+                <a href="{{ url_for('generate_maintenance_bills') }}" class="btn btn-primary btn-sm">Generate Bills for {{ month_name }}</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

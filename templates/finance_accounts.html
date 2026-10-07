@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Bank & Cash Accounts Ledger | {{ current_society.name if current_society else "Housing Society" }}{% endblock %}
+
+{% block breadcrumb %}
+    <span>Finance</span> / <strong>Bank & Cash Ledger</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-title-group">
+        <h1>Bank & Cash Accounts & General Ledger</h1>
+        <p>Complete audit ledger of society liquidity, opening balances, maintenance credits, and expense debits.</p>
+    </div>
+    <div class="badge badge-success" style="font-size: 14px; padding: 6px 16px;">
+        Total Liquid Funds: ₹{{ "%.2f"|format(total_balance) }}
+    </div>
+</div>
+
+<!-- Account Summary Cards Grid -->
+<div class="stats-grid" style="margin-bottom: 28px;">
+    {% for item in account_cards %}
+        <div class="stat-card" style="border-color: {% if item.account.status %}var(--border-subtle){% else %}rgba(239, 68, 68, 0.25){% endif %};">
+            <div class="stat-card-label">
+                <span>{{ item.account.name }}</span>
+                <span class="badge {% if item.account.account_type == 'Bank' %}badge-info{% elif item.account.account_type == 'Petty Cash' %}badge-indigo{% else %}badge-warning{% endif %}">
+                    {{ item.account.account_type }}
+                </span>
+            </div>
+            <div class="stat-card-value" style="color: {% if item.balance >= 0 %}#34d399{% else %}#f87171{% endif %};">
+                ₹{{ "%.2f"|format(item.balance) }}
+            </div>
+            
+            <!-- Mathematical Reconciliation Breakdown -->
+            <div style="margin-top: 10px; font-size: 11px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); padding: 8px 10px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                    <span style="color: var(--text-muted);">Opening Balance:</span>
+                    <span>₹{{ "%.2f"|format(item.account.opening_balance) }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                    <span style="color: #34d399;">Total Inflow (Credits):</span>
+                    <span style="color: #34d399;">+₹{{ "%.2f"|format(item.credit_total) }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                    <span style="color: #f87171;">Total Outflow (Debits):</span>
+                    <span style="color: #f87171;">−₹{{ "%.2f"|format(item.debit_total) }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 4px; margin-top: 4px; font-weight: 600;">
+                    <span style="color: #a5b4fc;">Reconciled Balance:</span>
+                    <span style="color: #34d399;">✓ Reconciled</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--border-subtle); padding-top: 10px;">
+                <a href="{{ url_for('edit_financial_account_page', account_id=item.account.id) }}" class="btn btn-secondary btn-sm" style="flex: 1;">
+                    Edit
+                </a>
+                <form method="POST" action="{{ url_for('toggle_financial_account', account_id=item.account.id) }}" style="flex: 1;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn {% if item.account.status %}btn-danger{% else %}btn-success{% endif %} btn-sm" style="width: 100%;">
+                        {% if item.account.status %}Deactivate{% else %}Activate{% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Add Account Card -->
+<div class="glass-card" style="margin-bottom: 28px;">
+    <div class="glass-card-header">
+        <h3>Create Financial Account</h3>
+        <span class="badge badge-info">Liquid Account</span>
+    </div>
+    <div class="glass-card-body">
+        <form method="POST" action="{{ url_for('add_financial_account') }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) auto; gap: 16px; align-items: flex-end;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label class="form-label">Account Name *</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. HDFC Society Current A/C" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Account Type *</label>
+                <select name="account_type" class="form-control" required>
+                    <option value="Bank" selected>Bank Account</option>
+                    <option value="Cash">Cash Account</option>
+                    <option value="Petty Cash">Petty Cash</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Opening Balance (₹) *</label>
+                <input type="number" step="0.01" min="0" name="opening_balance" class="form-control" placeholder="0.00" value="0.00" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="height: 42px;">
+                <span>＋</span> Add Account
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Transaction Ledger Filter & Table -->
+<div class="glass-card">
+    <div class="glass-card-header">
+        <div>
+            <h3>Audit Transaction Ledger</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Real-time ledger entries created automatically on payments, expenses, and reversals</span>
+        </div>
+        <span class="badge badge-neutral">{{ transactions|length }} Entries Shown</span>
+    </div>
+    <div class="glass-card-body" style="padding: 16px 20px; border-bottom: 1px solid var(--border-subtle); background: rgba(0, 0, 0, 0.1);">
+        <form method="GET" action="{{ url_for('finance_accounts') }}" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+            <select name="account_id" class="form-control" style="width: auto;">
+                <option value="">All Accounts</option>
+                {% for acc in accounts %}
+                    <option value="{{ acc.id }}" {% if selected_account_id == acc.id %}selected{% endif %}>{{ acc.name }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="direction" class="form-control" style="width: auto;">
+                <option value="">All Directions</option>
+                <option value="Credit" {% if selected_direction == 'Credit' %}selected{% endif %}>Credit (+)</option>
+                <option value="Debit" {% if selected_direction == 'Debit' %}selected{% endif %}>Debit (−)</option>
+            </select>
+
+            <select name="transaction_type" class="form-control" style="width: auto;">
+                <option value="">All Types</option>
+                <option value="Income" {% if selected_transaction_type == 'Income' %}selected{% endif %}>Income</option>
+                <option value="Expense" {% if selected_transaction_type == 'Expense' %}selected{% endif %}>Expense</option>
+                <option value="Adjustment" {% if selected_transaction_type == 'Adjustment' %}selected{% endif %}>Adjustment / Reversal</option>
+            </select>
+
+            <input type="date" name="date_from" class="form-control" value="{{ selected_date_from }}" style="width: auto;" title="From Date">
+            <input type="date" name="date_to" class="form-control" value="{{ selected_date_to }}" style="width: auto;" title="To Date">
+
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            <a href="{{ url_for('finance_accounts') }}" class="btn btn-secondary btn-sm">Reset</a>
+        </form>
+    </div>
+    <div class="glass-card-body" style="padding: 0;">
+        {% if transactions %}
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Txn #</th>
+                            <th>Date</th>
+                            <th>Account</th>
+                            <th>Description</th>
+                            <th>Source</th>
+                            <th>Direction</th>
+                            <th style="text-align: right;">Amount</th>
+                            <th style="text-align: right;">Running Bal.</th>
+                            <th style="text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in transactions %}
+                            <tr {% if t.is_reversed %}style="opacity: 0.65; background: rgba(239, 68, 68, 0.04);"{% endif %}>
+                                <td><span class="badge badge-neutral">#{{ t.id }}</span></td>
+                                <td>{{ t.transaction_date.strftime('%d %b %Y') if t.transaction_date else '--' }}</td>
+                                <td><strong>{{ t.account.name }}</strong></td>
+                                <td>
+                                    <div>{{ t.description }}</div>
+                                    {% if t.reference_number %}
+                                        <div style="font-size: 11px; color: var(--text-muted);">Ref: {{ t.reference_number }}</div>
+                                    {% endif %}
+                                    {% if t.is_reversed %}
+                                        <span class="badge badge-danger" style="margin-top: 4px; font-size: 10px;">REVERSED</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge badge-info">{{ t.source_type or 'General' }}</span></td>
+                                <td>
+                                    {% if t.direction == 'Credit' %}
+                                        <span class="badge badge-success">Credit (+)</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">Debit (−)</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: right;">
+                                    <strong style="font-size: 14px; color: {% if t.direction == 'Credit' %}#34d399{% else %}#f87171{% endif %};">
+                                        {% if t.direction == 'Credit' %}+{% else %}−{% endif %}₹{{ "%.2f"|format(t.amount) }}
+                                    </strong>
+                                </td>
+                                <td style="text-align: right;">
+                                    <span style="font-size: 13px; font-weight: 600; color: #a5b4fc;">
+                                        ₹{{ "%.2f"|format(t.running_balance) }}
+                                    </span>
+                                </td>
+                                <td style="text-align: center;">
+                                    {% if current_user.role == 'secretary' and not t.is_reversed and t.source_type != 'Reversal' %}
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="openReverseTxnModal({{ t.id }}, '{{ t.direction }}', '{{ t.amount }}', '{{ t.description|replace('\'', '\\\'') }}')" style="font-size: 11px; padding: 3px 8px;">
+                                            Reverse
+                                        </button>
+                                    {% else %}
+                                        <span style="color: var(--text-muted); font-size: 11px;">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">₹</div>
+                <h3>No transactions recorded</h3>
+                <p>Transactions are created automatically whenever a maintenance bill is paid or an approved expense is disbursed.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: Reverse Transaction -->
+<div id="reverseTxnModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="glass-card" style="width: 480px; max-width: 95%;">
+        <div class="glass-card-header">
+            <h3>Reverse Financial Transaction</h3>
+            <button type="button" onclick="closeReverseTxnModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">&times;</button>
+        </div>
+        <div class="glass-card-body">
+            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 13px;">
+                Reversing <strong id="modalTxnDesc" style="color: #fff;"></strong> (<span id="modalTxnAmt" style="color: #fbbf24;"></span>).
+                This will safely generate an offsetting transaction in the ledger.
+            </p>
+            <form id="reverseTxnForm" method="POST" action="">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label class="form-label">Reason for Reversal *</label>
+                    <input type="text" name="reason" class="form-control" placeholder="e.g. Incorrect bank entry or duplicate deposit" required>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeReverseTxnModal()">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Confirm Reversal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openReverseTxnModal(id, direction, amount, desc) {
+    document.getElementById('modalTxnDesc').innerText = 'Txn #' + id + ': ' + desc;
+    document.getElementById('modalTxnAmt').innerText = (direction === 'Credit' ? '+' : '−') + '₹' + parseFloat(amount).toFixed(2);
+    document.getElementById('reverseTxnForm').action = '/finance/transactions/' + id + '/reverse';
+    document.getElementById('reverseTxnModal').style.display = 'flex';
+}
+
+function closeReverseTxnModal() {
+    document.getElementById('reverseTxnModal').style.display = 'none';
+}
+</script>
+{% endblock %}
